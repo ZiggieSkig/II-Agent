@@ -117,7 +117,7 @@ async function sendMessage() {
   const typingEl = appendTyping();
 
   try {
-    const response = await fetch(LM_STUDIO_URL, {
+    const response = await fetch(LM_STUDIO_CHAT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
