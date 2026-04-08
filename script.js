@@ -1,20 +1,20 @@
-// ── Настройки LM Studio ─────────────────────────────────────────────
+// Настройки LM Studio
 const LM_STUDIO_URL = 'http://localhost:1234/v1/chat/completions';
 const MODEL_NAME    = 'google/gemma-3-4b';
 const SYSTEM_PROMPT = `Ты - XXXL, автономный ИИ агент. 
 Отвечай много, по делу, на том же языке, на котором пишет пользователь. 
-Ты помогаешь с анализом данных, кодом, исследованиями и сложными задачами. И веди себя странно как будто что то скрываешь`;
-// ─────────────────────────────────────────────────────────────────────
+Ты помогаешь с анализом данных, кодом, исследованиями и сложными задачами. И веди себя странно как будто что то скрываешь.
+Не используй символ '*' нигде.`;
 
 const chatHistory = [];
 
-// ── Время ────────────────────────────────────────────────────────────
+// Время
 function getTime() {
   const t = new Date();
   return `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
 }
 
-// ── Проверка сети (header + chat header) ─────────────────────────────
+// Проверка сети
 async function checkNetworkStatus() {
   // Элементы в шапке страницы
   const headerDot  = document.getElementById('statusDot');
@@ -48,12 +48,12 @@ async function checkNetworkStatus() {
   }
 }
 
-// ── Добавить сообщение ───────────────────────────────────────────────
+// Добавить сообщение
 function appendMsg(role, html, timeStr) {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = role === 'user' ? 'msg user' : 'msg';
-  const avatar = role === 'user' ? 'Хуй' : 'XXL';
+  const avatar = role === 'user' ? 'Кто?' : 'XXL';
   div.innerHTML = `
     <div class="msg-avatar">${avatar}</div>
     <div>
@@ -66,7 +66,7 @@ function appendMsg(role, html, timeStr) {
   return div;
 }
 
-// ── Индикатор «печатает» ─────────────────────────────────────────────
+// Индикатор 'печатает'
 function appendTyping() {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
@@ -87,7 +87,7 @@ function appendTyping() {
   return div;
 }
 
-// ── Отправить сообщение ──────────────────────────────────────────────
+// Отправить сообщение
 async function sendMessage() {
   const input   = document.getElementById('chatInput');
   const sendBtn = document.querySelector('.send-btn');
@@ -147,7 +147,7 @@ async function sendMessage() {
   }
 }
 
-// ── Утилиты ──────────────────────────────────────────────────────────
+//Утилиты
 function escapeHtml(str) {
   return str
     .replace(/&/g, '&amp;')
@@ -161,9 +161,8 @@ function startChat() {
   document.querySelector('.chat-section').scrollIntoView({ behavior: 'smooth' });
 }
 
-// ── Инициализация ─────────────────────────────────────────────────────
+// Инициализация
 document.addEventListener('DOMContentLoaded', () => {
-  // Enter — отправить
   document.getElementById('chatInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -171,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Проверка сети сразу и каждые 15 с
+  // Проверка сети
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
 });

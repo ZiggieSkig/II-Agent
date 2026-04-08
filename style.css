@@ -51,7 +51,7 @@ body::after {
   padding: 0 32px;
 }
 
-/* ── Header ── */
+/* Header */
 header {
   padding: 36px 0;
   border-bottom: 1px solid var(--border);
@@ -92,7 +92,7 @@ header {
   50% { opacity: 0.4; transform: scale(0.75); }
 }
 
-/* ── Hero ── */
+/* Hero */
 .hero {
   padding: 90px 0 70px;
   animation: fadeUp 0.9s ease both;
@@ -175,7 +175,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   transform: translateY(-1px);
 }
 
-/* ── Chat section ── */
+/* Chat section */
 .chat-section {
   padding: 56px 0 80px;
   animation: fadeUp 0.9s ease 0.2s both;
@@ -223,7 +223,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   background: linear-gradient(90deg, var(--accent) 0%, var(--accent2) 50%, transparent 100%);
 }
 
-/* ── Chat header ── */
+/* Chat header */
 .chat-header {
   padding: 13px 22px;
   border-bottom: 1px solid var(--border-light);
@@ -268,7 +268,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   transition: background 0.4s, box-shadow 0.4s;
 }
 
-/* ── Messages ── */
+/* Messages */
 .chat-messages {
   padding: 28px 24px;
   min-height: 520px;
@@ -342,7 +342,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   letter-spacing: 0.12em;
 }
 
-/* ── Typing dots animation ── */
+/* Typing dots animation */
 .typing {
   display: flex;
   gap: 6px;
@@ -373,7 +373,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   }
 }
 
-/* ── Input area ── */
+/* Input area */
 .chat-input-area {
   border-top: 1px solid var(--border-light);
   padding: 16px 22px;
@@ -418,7 +418,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   box-shadow: var(--glow);
 }
 
-/* ── Footer ── */
+/* Footer */
 footer {
   border-top: 1px solid var(--border);
   padding: 36px 0;
@@ -433,12 +433,11 @@ footer {
 
 footer .logo { font-size: 18px; }
 
-/* ── Scrollbar ── */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); }
 
-/* ── Responsive ── */
 @media (max-width: 600px) {
   header { flex-direction: column; gap: 16px; }
   footer { flex-direction: column; gap: 16px; text-align: center; }
