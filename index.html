@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XXXL - ИИ Агент</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">XXXL</div>
+    <div class="status-badge" id="statusBadge">
+      <div class="status-dot" id="statusDot" style="background:var(--muted2);box-shadow:none"></div>
+      <span id="statusText">Проверка...</span>
+    </div>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero">
+    <div class="hero-tag"><span>v.0</span> - ИИ агент старого поколения</div>
+    <h1>
+      ИИ агент,<br>
+      который <em>думает</em><br>
+      <span class="dim">не за вас</span>
+    </h1>
+    <p class="hero-desc">
+      XXXL - автономный ИИ агент с доступом к моему компу, пожирающий мою
+      память, свет и способностью решать ничего.
+    </p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="startChat()">Начать сессию</button>
+    </div>
+  </section>
+
+
+  <!-- ── Chat ── -->
+  <section class="chat-section">
+    <div class="section-label">Интерфейс попуща</div>
+    <div class="chat-window">
+
+      <!-- Chat header -->
+      <div class="chat-header">
+        <div class="chat-header-dot" style="background:#c4855a"></div>
+        <div class="chat-header-dot" style="background:#d4cdc0"></div>
+        <div class="chat-header-dot" style="background:#d4cdc0"></div>
+        <div class="chat-header-info">
+          <span class="chat-header-session">XXXL - активация винды</span>
+          <div class="chat-net-status">
+            <div class="chat-net-dot" id="chatNetDot" style="background:var(--muted2)"></div>
+            <span id="chatNetText">Проверка твоей мамы...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Messages -->
+      <div class="chat-messages" id="chatMessages"></div>
+
+      <!-- Input -->
+      <div class="chat-input-area">
+        <input
+          class="chat-input"
+          id="chatInput"
+          placeholder="Введите задачу для агента..."
+        >
+        <button class="send-btn" onclick="sendMessage()">→</button>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Footer ── -->
+  <footer>
+    <div class="logo">XXXL</div>
+    <div>XXXL AI</div>
+  </footer>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
