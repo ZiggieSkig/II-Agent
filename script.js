@@ -38,10 +38,17 @@ async function checkNetworkStatus() {
   }
 
   try {
-    const res = await fetch(LM_STUDIO_MODELS, {
-      method: 'GET',
-      signal: AbortSignal.timeout(3000)
+    const res = await fetch(LM_STUDIO_CHAT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages: [{ role: 'system', content: 'ping' }],
+        temperature: 0,
+        max_tokens: 1
+      })
     });
+
     res.ok ? setOnline() : setOffline();
   } catch {
     setOffline();
