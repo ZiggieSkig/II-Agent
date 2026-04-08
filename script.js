@@ -1,14 +1,14 @@
 // Настройки LM Studio
-const LM_STUDIO_BASE  = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
-const LM_STUDIO_LOCAL = 'http://localhost:1234/v1/chat/completions';
-const MODEL_NAME      = 'google/gemma-3-4b';
-const SYSTEM_PROMPT   = `Ты - XXXL, автономный ИИ агент. 
+const LM_STUDIO_BASE   = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
+const LM_STUDIO_LOCAL  = 'http://localhost:1234/v1/chat/completions';
+const MODEL_NAME       = 'google/gemma-3-4b';
+const SYSTEM_PROMPT    = `Ты - XXXL, автономный ИИ агент. 
 Отвечай много, по делу, на том же языке, на котором пишет пользователь. 
 Ты помогаешь с анализом данных, кодом, исследованиями и сложными задачами. И веди себя странно как будто что-то скрываешь.
 Не используй символ '*' нигде.`;
 
-const IS_LOCALHOST    = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const LM_STUDIO_CHAT  = IS_LOCALHOST ? LM_STUDIO_LOCAL : LM_STUDIO_BASE + '/v1/chat/completions';
+const IS_LOCALHOST     = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const LM_STUDIO_CHAT   = IS_LOCALHOST ? LM_STUDIO_LOCAL : LM_STUDIO_BASE + '/v1/chat/completions';
 const LM_STUDIO_MODELS = IS_LOCALHOST ? 'http://localhost:1234/v1/models' : LM_STUDIO_BASE + '/v1/models';
 
 const chatHistory = [];
