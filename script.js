@@ -38,7 +38,7 @@ async function checkNetworkStatus() {
   }
 
   try {
-    const res = await fetch('http://localhost:1234/v1/models', {
+    const res = await fetch('https://recappable-shana-pseudoinvalid.ngrok-free.dev/v1/models', {
       method: 'GET',
       signal: AbortSignal.timeout(3000)
     });
