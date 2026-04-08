@@ -1,20 +1,15 @@
 // Настройки LM Studio
-const LM_STUDIO_URL = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev/v1/chat/completions';
-const MODEL_NAME    = 'google/gemma-3-4b';
-const SYSTEM_PROMPT = `Ты - XXXL, автономный ИИ агент. 
+const LM_STUDIO_BASE  = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
+const LM_STUDIO_LOCAL = 'http://localhost:1234/v1/chat/completions';
+const MODEL_NAME      = 'google/gemma-3-4b';
+const SYSTEM_PROMPT   = `Ты - XXXL, автономный ИИ агент. 
 Отвечай много, по делу, на том же языке, на котором пишет пользователь. 
-Ты помогаешь с анализом данных, кодом, исследованиями и сложными задачами. И веди себя странно как будто что то скрываешь.
+Ты помогаешь с анализом данных, кодом, исследованиями и сложными задачами. И веди себя странно как будто что-то скрываешь.
 Не используй символ '*' нигде.`;
 
-const LM_STUDIO_MODELS = LM_STUDIO_BASE + '/v1/models';
-const LM_STUDIO_LOCAL = 'http://localhost:1234/v1/chat/completions';
-const LM_STUDIO_BASE  = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
-const LM_STUDIO_CHAT  = window.location.hostname === 'localhost' ? LM_STUDIO_LOCAL : LM_STUDIO_BASE + '/v1/chat/completions';
-// Определяем URL в зависимости от хоста
-const IS_LOCALHOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-const LM_STUDIO_CHAT = IS_LOCALHOST 
-  ? 'http://localhost:1234/v1/chat/completions'   // локально на ПК
-  : 'https://recappable-shana-pseudoinvalid.ngrok-free.dev/v1/chat/completions'; // телефон / другой ПК
+const IS_LOCALHOST    = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const LM_STUDIO_CHAT  = IS_LOCALHOST ? LM_STUDIO_LOCAL : LM_STUDIO_BASE + '/v1/chat/completions';
+const LM_STUDIO_MODELS = IS_LOCALHOST ? 'http://localhost:1234/v1/models' : LM_STUDIO_BASE + '/v1/models';
 
 const chatHistory = [];
 
@@ -32,25 +27,29 @@ async function checkNetworkStatus() {
   const chatText   = document.getElementById('chatNetText');
 
   function setOnline() {
-    headerDot.style.cssText  = 'background:#6ab04c;box-shadow:0 0 6px #6ab04c;animation:pulse 2.5s infinite';
-    headerText.textContent   = 'Нейросеть активна';
-    chatDot.style.cssText    = 'background:#6ab04c;box-shadow:0 0 5px #6ab04c;animation:pulse 2.5s infinite';
-    chatText.textContent     = 'Нейросеть активна';
+    headerDot.style.background = '#6ab04c';
+    headerText.textContent = 'Нейросеть активна';
+    chatDot.style.background = '#6ab04c';
+    chatText.textContent = 'Нейросеть активна';
   }
 
   function setOffline() {
-    headerDot.style.cssText  = 'background:#e55039;box-shadow:0 0 6px #e55039;animation:none';
-    headerText.textContent   = 'Нейросеть недоступна';
-    chatDot.style.cssText    = 'background:#e55039;box-shadow:0 0 5px #e55039;animation:none';
-    chatText.textContent     = 'Нейросеть недоступна';
+    headerDot.style.background = '#e55039';
+    headerText.textContent = 'Нейросеть недоступна';
+    chatDot.style.background = '#e55039';
+    chatText.textContent = 'Нейросеть недоступна';
   }
+
+  // Показываем "Проверка..." пока идёт запрос
+  headerText.textContent = 'Проверка...';
+  chatText.textContent   = 'Проверка...';
 
   try {
     const res = await fetch(LM_STUDIO_CHAT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'google/gemma-3-4b',
+        model: MODEL_NAME,
         messages: [{ role: 'system', content: 'ping' }],
         temperature: 0,
         max_tokens: 1
