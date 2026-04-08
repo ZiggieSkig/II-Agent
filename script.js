@@ -1,5 +1,5 @@
 // Настройки LM Studio
-const LM_STUDIO_URL = 'http://192.168.100.10:1234/v1/chat/completions';
+const LM_STUDIO_URL = ' https://recappable-shana-pseudoinvalid.ngrok-free.dev:1234/v1/chat/completions';
 const MODEL_NAME    = 'google/gemma-3-4b';
 const SYSTEM_PROMPT = `Ты - XXXL, автономный ИИ агент. 
 Отвечай много, по делу, на том же языке, на котором пишет пользователь. 
