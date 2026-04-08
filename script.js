@@ -5,7 +5,9 @@ const SYSTEM_PROMPT = `Ты - XXXL, автономный ИИ агент.
 Отвечай много, по делу, на том же языке, на котором пишет пользователь. 
 Ты помогаешь с анализом данных, кодом, исследованиями и сложными задачами. И веди себя странно как будто что то скрываешь.
 Не используй символ '*' нигде.`;
-
+const LM_STUDIO_BASE = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
+const LM_STUDIO_MODELS = LM_STUDIO_BASE + '/v1/models';
+const LM_STUDIO_CHAT   = LM_STUDIO_BASE + '/v1/chat/completions';
 const chatHistory = [];
 
 // Время
@@ -16,10 +18,8 @@ function getTime() {
 
 // Проверка сети
 async function checkNetworkStatus() {
-  // Элементы в шапке страницы
   const headerDot  = document.getElementById('statusDot');
   const headerText = document.getElementById('statusText');
-  // Элементы в заголовке чата
   const chatDot    = document.getElementById('chatNetDot');
   const chatText   = document.getElementById('chatNetText');
 
@@ -38,7 +38,7 @@ async function checkNetworkStatus() {
   }
 
   try {
-    const res = await fetch('https://recappable-shana-pseudoinvalid.ngrok-free.dev/v1/models', {
+    const res = await fetch(LM_STUDIO_MODELS, {
       method: 'GET',
       signal: AbortSignal.timeout(3000)
     });
