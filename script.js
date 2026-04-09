@@ -1,6 +1,38 @@
-const LOCAL_API_BASE = 'http://localhost:1234';
+// ── Тема ────────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const next = isDark ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('swapcat_theme', next);
+  showToast(next === 'dark' ? 'Тёмная тема включена' : 'Светлая тема включена');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('swapcat_theme');
+  const preferDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (preferDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function showToast(msg, type = 'info', duration = 3000) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const t = document.createElement('div');
+  t.className = `toast${type === 'error' ? ' toast-error' : type === 'success' ? ' toast-success' : ''}`;
+  t.textContent = msg;
+  container.appendChild(t);
+  const remove = () => {
+    t.classList.add('toast-out');
+    t.addEventListener('animationend', () => t.remove(), { once: true });
+  };
+  const timer = setTimeout(remove, duration);
+  t.addEventListener('click', () => { clearTimeout(timer); remove(); });
+}
+
+const LOCAL_API_BASE  = 'http://localhost:1234';
 const REMOTE_API_BASE = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
-const DEFAULT_MODEL = 'google/gemma-3-4b';
+const DEFAULT_MODEL   = 'google/gemma-3-4b';
 let activeBaseUrl = null;
 
 function isLocalFrontendHost() {
@@ -9,47 +41,27 @@ function isLocalFrontendHost() {
 }
 
 function buildCandidateBases() {
-  const preferredBases = isLocalFrontendHost()
+  const preferred = isLocalFrontendHost()
     ? [LOCAL_API_BASE, REMOTE_API_BASE]
     : [REMOTE_API_BASE];
-
-  if (activeBaseUrl) {
-    return [activeBaseUrl, ...preferredBases.filter(base => base !== activeBaseUrl)];
-  }
-  return [...preferredBases];
+  return activeBaseUrl
+    ? [activeBaseUrl, ...preferred.filter(b => b !== activeBaseUrl)]
+    : [...preferred];
 }
 
-function buildApiUrl(base, path) {
-  return `${base.replace(/\/+$/, '')}${path}`;
-}
-
-function getModelName() {
-  return DEFAULT_MODEL;
+function getHeaders() {
+  return { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' };
 }
 
 async function resolveAvailableBase(timeoutMs = 4000) {
   for (const base of buildCandidateBases()) {
     try {
-      const r = await fetch(buildApiUrl(base, '/v1/models'), {
-        signal: AbortSignal.timeout(timeoutMs),
-        headers: getHeaders()
-      });
-      if (r.ok) {
-        activeBaseUrl = base;
-        return base;
-      }
+      const r = await fetch(`${base}/v1/models`, { signal: AbortSignal.timeout(timeoutMs), headers: getHeaders() });
+      if (r.ok) { activeBaseUrl = base; return base; }
     } catch {}
   }
   activeBaseUrl = null;
   throw new Error('Не удалось подключиться ни к localhost, ни к ngrok');
-}
-
-// ngrok
-function getHeaders() {
-  return {
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true'
-  };
 }
 
 const SYSTEM_PROMPT = `Ты - Swapcat, автономный ИИ-агент.
@@ -72,103 +84,84 @@ const SYSTEM_PROMPT = `Ты - Swapcat, автономный ИИ-агент.
 
 СТИЛЬ: много, по делу, без воды. Если задача большая — разбей на шаги.`;
 
-let chatHistory    = [];
-let currentAbort   = null;
-let attachedImage  = null;
-let attachedFile   = null;
-let currentSession = null;
+let chatHistory     = [];
+let currentAbort    = null;
+let attachedImage   = null;
+let attachedFile    = null;
+let currentSession  = null;
 let editingMsgIndex = null;
 
-// Markdown
 function renderMarkdown(text) {
-  if (typeof marked !== 'undefined') {
-    return marked.parse(text, { breaks: true, gfm: true });
-  }
-  return escapeHtml(text).replace(/\n/g, '<br>');
+  return typeof marked !== 'undefined'
+    ? marked.parse(text, { breaks: true, gfm: true })
+    : escapeHtml(text).replace(/\n/g, '<br>');
 }
 
-// Время
 function getTime() {
   const t = new Date();
   return `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
 }
 
-// Сеть
+let _lastNetStatus = null;
+
 async function checkNetworkStatus() {
   const hDot = document.getElementById('statusDot');
   const hTxt = document.getElementById('statusText');
   const cDot = document.getElementById('chatNetDot');
   const cTxt = document.getElementById('chatNetText');
 
-  function on(base) {
-    const label = base.includes('localhost') ? 'Нейросеть активна (локально)' : 'Нейросеть активна';
-    hDot.style.cssText = 'background:#6ab04c;box-shadow:0 0 6px #6ab04c;animation:pulse 2.5s infinite';
-    hTxt.textContent = label;
-    cDot.style.cssText = 'background:#6ab04c;box-shadow:0 0 5px #6ab04c;animation:pulse 2.5s infinite';
-    cTxt.textContent = label;
-  }
-
-  function off(reason) {
-    hDot.style.cssText = 'background:#e55039;box-shadow:0 0 6px #e55039;animation:none';
-    hTxt.textContent = reason || 'Нейросеть недоступна';
-    cDot.style.cssText = 'background:#e55039;box-shadow:0 0 5px #e55039;animation:none';
-    cTxt.textContent = reason || 'Нейросеть недоступна';
+  function setStatus(on, label, color) {
+    const dotStyle = on
+      ? `background:${color};box-shadow:0 0 6px ${color};animation:pulse 2.5s infinite`
+      : `background:${color};box-shadow:0 0 6px ${color};animation:none`;
+    hDot.style.cssText = dotStyle;
+    hTxt.textContent   = label;
+    cDot.style.cssText = dotStyle.replace('6px', '5px');
+    cTxt.textContent   = label;
   }
 
   try {
     const base = await resolveAvailableBase(2500);
-    on(base);
+    const label = base.includes('localhost') ? 'Нейросеть активна (локально)' : 'Нейросеть активна';
+    if (_lastNetStatus !== 'on') showToast(label, 'success', 2500);
+    _lastNetStatus = 'on';
+    setStatus(true, label, '#6ab04c');
   } catch {
-    off('Нейросеть недоступна');
+    if (_lastNetStatus !== 'off') showToast('Нейросеть недоступна', 'error', 3500);
+    _lastNetStatus = 'off';
+    setStatus(false, 'Нейросеть недоступна', '#e55039');
   }
 }
 
-// Добавить сообщение
 function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex } = {}) {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = role === 'user' ? 'msg user' : 'msg';
   if (historyIndex !== undefined) div.dataset.historyIndex = historyIndex;
 
-  const avatar = role === 'user' ? 'Кто?' : 'SС';
-
-  const imageHtml = imagePreview
-    ? `<div class="msg-image-preview"><img src="${imagePreview}" alt="фото"></div>` : '';
-
-  const fileHtml = fileName
+  const avatar    = role === 'user' ? 'Кто?' : 'SС';
+  const imageHtml = imagePreview ? `<div class="msg-image-preview"><img src="${imagePreview}" alt="фото"></div>` : '';
+  const fileHtml  = fileName
     ? `<div class="msg-file-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg> ${escapeHtml(fileName)}</div>` : '';
-
   const bubbleHtml = html ? `<div class="msg-bubble">${html}</div>` : '';
-
   const copyBtn = role !== 'user'
-    ? `<button class="copy-btn" onclick="copyMsg(this)">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-        копировать
-       </button>` : '';
-
+    ? `<button class="copy-btn" onclick="copyMsg(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> копировать</button>` : '';
   const editBtn = (role === 'user' && historyIndex !== undefined)
-    ? `<button class="edit-btn" onclick="startEdit(${historyIndex}, this)">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        изменить
-       </button>` : '';
+    ? `<button class="edit-btn" onclick="startEdit(${historyIndex}, this)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> изменить</button>` : '';
 
   div.innerHTML = `
     <div class="msg-avatar">${avatar}</div>
     <div class="msg-body">
       ${imageHtml}${fileHtml}${bubbleHtml}
       <div class="msg-time">${timeStr}${copyBtn}${editBtn}</div>
-    </div>
-  `;
+    </div>`;
+
   messages.appendChild(div);
   messages.scrollTop = messages.scrollHeight;
-
-  if (typeof hljs !== 'undefined') {
-    div.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
-  }
+  if (typeof hljs !== 'undefined') div.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
   return div;
 }
 
-// Стриминг bubble
 function appendStreamingMsg() {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
@@ -185,34 +178,28 @@ function appendStreamingMsg() {
   return div;
 }
 
-// Копировать
 function copyMsg(btn) {
   const bubble = btn.closest('.msg-body').querySelector('.msg-bubble');
   navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
-    const orig = btn.innerHTML;
-    btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> скопировано`;
-    setTimeout(() => btn.innerHTML = orig, 1800);
+    showToast('Скопировано', 'success', 1800);
   });
 }
 
-// Редактирование сообщения
-function startEdit(historyIndex, btn) {
+function startEdit(historyIndex) {
   const msg = chatHistory[historyIndex];
   if (!msg || msg.role !== 'user') return;
 
-  const textContent = typeof msg.content === 'string'
+  const text = typeof msg.content === 'string'
     ? msg.content
     : (msg.content?.find(c => c.type === 'text')?.text || '');
 
   const input = document.getElementById('chatInput');
-  input.value = textContent;
+  input.value = text;
   input.focus();
-
   editingMsgIndex = historyIndex;
-
   document.querySelector('.chat-input-area').classList.add('editing');
   document.getElementById('editIndicator').style.display = 'flex';
-  document.getElementById('editIndicatorText').textContent = `Редактирование сообщения`;
+  document.getElementById('editIndicatorText').textContent = 'Редактирование сообщения';
 }
 
 function cancelEdit() {
@@ -222,15 +209,12 @@ function cancelEdit() {
   document.getElementById('editIndicator').style.display = 'none';
 }
 
-// Сессии
+// ── Сессии ─────────────────────────────────────────────────────────────────
 function getSessions() {
-  try { return JSON.parse(localStorage.getItem('xxxl_sessions') || '[]'); }
-  catch { return []; }
+  try { return JSON.parse(localStorage.getItem('xxxl_sessions') || '[]'); } catch { return []; }
 }
 
-function saveSessions(arr) {
-  localStorage.setItem('xxxl_sessions', JSON.stringify(arr));
-}
+function saveSessions(arr) { localStorage.setItem('xxxl_sessions', JSON.stringify(arr)); }
 
 function saveCurrentSession() {
   if (!currentSession || chatHistory.length === 0) return;
@@ -240,16 +224,14 @@ function saveCurrentSession() {
   const firstUser = chatHistory.find(m => m.role === 'user');
   let preview = 'Сессия';
   if (firstUser) {
-    preview = typeof firstUser.content === 'string'
+    preview = (typeof firstUser.content === 'string'
       ? firstUser.content
-      : (firstUser.content?.find(c => c.type === 'text')?.text || '📎 файл/изображение');
-    preview = preview.slice(0, 52);
+      : (firstUser.content?.find(c => c.type === 'text')?.text || '📎 файл/изображение')
+    ).slice(0, 52);
   }
 
   const updated = { ...currentSession, preview, history: chatHistory, updatedAt: Date.now() };
-  if (idx >= 0) sessions[idx] = updated;
-  else sessions.unshift(updated);
-
+  if (idx >= 0) sessions[idx] = updated; else sessions.unshift(updated);
   saveSessions(sessions.slice(0, 30));
   currentSession = updated;
   renderSessionList();
@@ -284,12 +266,10 @@ function loadSession(id) {
   const messages = document.getElementById('chatMessages');
   messages.innerHTML = '';
 
-  let userMsgCount = 0;
   chatHistory.forEach((msg, i) => {
     if (msg.role === 'system') return;
     const role = msg.role === 'user' ? 'user' : 'agent';
-    const hi = msg.role === 'user' ? i : undefined;
-    if (msg.role === 'user') userMsgCount++;
+    const hi   = msg.role === 'user' ? i : undefined;
 
     if (Array.isArray(msg.content)) {
       const txt  = msg.content.find(c => c.type === 'text');
@@ -297,19 +277,15 @@ function loadSession(id) {
       const file = msg.content.find(c => c.type === 'file');
       appendMsg(role,
         txt ? (role === 'user' ? escapeHtml(txt.text) : renderMarkdown(txt.text)) : '',
-        '—',
-        { imagePreview: img?.image_url?.url, fileName: file?.name, historyIndex: hi }
+        '—', { imagePreview: img?.image_url?.url, fileName: file?.name, historyIndex: hi }
       );
     } else {
-      appendMsg(role,
-        role === 'agent' ? renderMarkdown(msg.content) : escapeHtml(msg.content),
-        '—', { historyIndex: hi }
-      );
+      appendMsg(role, role === 'agent' ? renderMarkdown(msg.content) : escapeHtml(msg.content), '—', { historyIndex: hi });
     }
   });
 
   renderSessionList();
-  document.getElementById('chatMessages').scrollTop = 999999;
+  messages.scrollTop = 999999;
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 }
 
@@ -317,8 +293,7 @@ function deleteSession(id, e) {
   e.stopPropagation();
   const sessions = getSessions().filter(s => s.id !== id);
   saveSessions(sessions);
-  if (currentSession?.id === id) newSession();
-  else renderSessionList();
+  if (currentSession?.id === id) newSession(); else renderSessionList();
 }
 
 function renderSessionList() {
@@ -330,10 +305,9 @@ function renderSessionList() {
     list.innerHTML = '<div class="session-empty">Нет сохранённых сессий</div>';
     return;
   }
-
   list.innerHTML = sessions.map(s => `
     <div class="session-item ${s.id === currentSession?.id ? 'active' : ''}" onclick="loadSession('${s.id}')">
-      <div class="session-preview">${escapeHtml(s.preview || 'Сессия')}</div>
+      <div class="session-preview" ondblclick="startRenameSession('${s.id}', this)" title="Двойной клик — переименовать">${escapeHtml(s.preview || 'Сессия')}</div>
       <div class="session-meta">
         <span>${new Date(s.updatedAt).toLocaleDateString('ru', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })}</span>
         <button class="session-del" onclick="deleteSession('${s.id}', event)" title="Удалить">✕</button>
@@ -341,40 +315,60 @@ function renderSessionList() {
     </div>`).join('');
 }
 
-// Файлы — изображения
+function startRenameSession(id, el) {
+  const current = el.textContent;
+  const input = document.createElement('input');
+  input.className = 'session-rename-input';
+  input.value = current;
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const commit = () => {
+    const val = input.value.trim() || current;
+    const sessions = getSessions();
+    const idx = sessions.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      sessions[idx].preview = val.slice(0, 52);
+      saveSessions(sessions);
+      if (currentSession?.id === id) currentSession.preview = sessions[idx].preview;
+    }
+    renderSessionList();
+    showToast('Сессия переименована', 'success');
+  };
+
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') renderSessionList();
+  });
+  input.addEventListener('blur', commit);
+}
+
+// ── Файлы ───────────────────────────────────────────────────────────────────
 function handleAnyFile(file) {
   if (!file) return;
-  if (file.type.startsWith('image/')) {
-    handleImageFile(file);
-  } else {
-    handleTextFile(file);
-  }
+  file.type.startsWith('image/') ? handleImageFile(file) : handleTextFile(file);
 }
 
 function handleImageFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    const base64 = e.target.result.split(',')[1];
-    attachedImage = { base64, mimeType: file.type, previewUrl: e.target.result };
+    attachedImage = { base64: e.target.result.split(',')[1], mimeType: file.type, previewUrl: e.target.result };
     attachedFile  = null;
     showAttachPreview({ type: 'image', src: e.target.result });
   };
   reader.readAsDataURL(file);
 }
 
-// ── Файлы — текст ─────────────────────────────────────────────────────
 const TEXT_EXTS = ['txt','md','py','js','ts','jsx','tsx','html','css','json','csv','xml','yaml','yml','sh','bash','c','cpp','h','java','go','rs','rb','php','sql','log','env','toml','ini','cfg'];
 
 function handleTextFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (!TEXT_EXTS.includes(ext)) {
-    alert(`Файл .${ext} не поддерживается.\nПоддерживаются: изображения и текстовые файлы (${TEXT_EXTS.slice(0,8).join(', ')}...)`);
+    showToast(`Файл .${ext} не поддерживается`, 'error'); return;
     return;
   }
-  if (file.size > 500 * 1024) {
-    alert('Файл слишком большой. Максимум 500 КБ.');
-    return;
-  }
+  if (file.size > 500 * 1024) { showToast('Файл слишком большой. Максимум 500 КБ', 'error'); return; }
   const reader = new FileReader();
   reader.onload = e => {
     attachedFile  = { name: file.name, content: e.target.result, size: file.size, ext };
@@ -392,11 +386,8 @@ function showAttachPreview({ type, src, name, size }) {
     preview.className = 'attach-preview';
     document.querySelector('.chat-input-area').appendChild(preview);
   }
-
   if (type === 'image') {
-    preview.innerHTML = `
-      <img src="${src}" alt="фото">
-      <button onclick="clearAttachedFile()" class="attach-remove" title="Удалить">✕</button>`;
+    preview.innerHTML = `<img src="${src}" alt="фото"><button onclick="clearAttachedFile()" class="attach-remove" title="Удалить">✕</button>`;
   } else {
     const kb = (size / 1024).toFixed(1);
     preview.innerHTML = `
@@ -412,43 +403,30 @@ function showAttachPreview({ type, src, name, size }) {
 function clearAttachedFile() {
   attachedImage = null;
   attachedFile  = null;
-  const p = document.getElementById('attachPreview');
-  if (p) p.remove();
+  document.getElementById('attachPreview')?.remove();
   const fi = document.getElementById('fileInput');
   if (fi) fi.value = '';
 }
 
-// Drag & Drop
 function setupDragDrop() {
   const win = document.querySelector('.chat-window');
-  win.addEventListener('dragover', e => { e.preventDefault(); win.classList.add('drag-over'); });
+  win.addEventListener('dragover',  e => { e.preventDefault(); win.classList.add('drag-over'); });
   win.addEventListener('dragleave', e => { if (!win.contains(e.relatedTarget)) win.classList.remove('drag-over'); });
-  win.addEventListener('drop', e => {
-    e.preventDefault();
-    win.classList.remove('drag-over');
-    const file = e.dataTransfer.files[0];
-    if (file) handleAnyFile(file);
-  });
+  win.addEventListener('drop',      e => { e.preventDefault(); win.classList.remove('drag-over'); const f = e.dataTransfer.files[0]; if (f) handleAnyFile(f); });
 }
 
-// Панель сессий
+// ── Панель сессий ───────────────────────────────────────────────────────────
 function toggleSessionsPanel() {
-  const panel = document.getElementById('sessionsPanel');
-  const btn   = document.querySelector('.sessions-toggle-btn');
-  panel.classList.toggle('collapsed');
-  btn.classList.toggle('active');
+  document.getElementById('sessionsPanel').classList.toggle('collapsed');
+  document.querySelector('.sessions-toggle-btn').classList.toggle('active');
 }
 
 function closeSessionsPanel() {
-  const panel = document.getElementById('sessionsPanel');
-  const btn   = document.querySelector('.sessions-toggle-btn');
-  panel.classList.add('collapsed');
-  btn.classList.remove('active');
+  document.getElementById('sessionsPanel').classList.add('collapsed');
+  document.querySelector('.sessions-toggle-btn').classList.remove('active');
 }
 
-function closeSidebar() {}
-
-// Отправить / переотправить
+// ── Отправить / переотправить ───────────────────────────────────────────────
 async function sendMessage() {
   const input   = document.getElementById('chatInput');
   const sendBtn = document.getElementById('sendBtn');
@@ -457,31 +435,25 @@ async function sendMessage() {
 
   if (!text && !attachedImage && !attachedFile) return;
 
-  // Режим редактирования
   if (editingMsgIndex !== null) {
     chatHistory = chatHistory.slice(0, editingMsgIndex);
     cancelEdit();
-
-    const allMsgs = document.getElementById('chatMessages').querySelectorAll('.msg');
-    let targetUserMsgNum = 0;
-    for (let i = 0; i < editingMsgIndex; i++) {
-      if (chatHistory[i]?.role === 'user') targetUserMsgNum++;
-    }
-    let currentUserCount = 0;
-    let removing = false;
-    allMsgs.forEach(el => {
+    let userCount = 0;
+    let removing  = false;
+    document.getElementById('chatMessages').querySelectorAll('.msg').forEach(el => {
       if (removing) { el.remove(); return; }
-      if (el.classList.contains('user')) {
-        currentUserCount++;
-        if (currentUserCount > targetUserMsgNum) { removing = true; el.remove(); }
+      if (el.classList.contains('user') && ++userCount > chatHistory.filter(m => m.role === 'user').length) {
+        removing = true; el.remove();
       }
     });
   }
 
-  const imgPreview = attachedImage?.previewUrl || null;
-  const fname      = attachedFile?.name || null;
-  const hi         = chatHistory.length;
-  appendMsg('user', text ? escapeHtml(text) : null, getTime(), { imagePreview: imgPreview, fileName: fname, historyIndex: hi });
+  const hi = chatHistory.length;
+  appendMsg('user', text ? escapeHtml(text) : null, getTime(), {
+    imagePreview: attachedImage?.previewUrl || null,
+    fileName: attachedFile?.name || null,
+    historyIndex: hi
+  });
 
   let userContent;
   if (attachedImage) {
@@ -491,9 +463,7 @@ async function sendMessage() {
     ];
   } else if (attachedFile) {
     const fileBlock = `\`\`\`${attachedFile.ext}\n// Файл: ${attachedFile.name}\n${attachedFile.content}\n\`\`\``;
-    userContent = text
-      ? `${text}\n\n${fileBlock}`
-      : `Проанализируй этот файл:\n\n${fileBlock}`;
+    userContent = text ? `${text}\n\n${fileBlock}` : `Проанализируй этот файл:\n\n${fileBlock}`;
   } else {
     userContent = text;
   }
@@ -512,37 +482,27 @@ async function sendMessage() {
   let fullText = '';
 
   try {
-    let res = null;
-    let lastError = null;
+    let res = null, lastError = null;
     for (const base of buildCandidateBases()) {
       try {
-        const attempt = await fetch(buildApiUrl(base, '/v1/chat/completions'), {
+        const attempt = await fetch(`${base}/v1/chat/completions`, {
           method: 'POST',
           headers: getHeaders(),
           signal: currentAbort.signal,
           body: JSON.stringify({
-            model: getModelName(),
+            model: DEFAULT_MODEL,
             messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
             temperature: 0.7, max_tokens: 2048, stream: true
           })
         });
-
-        if (!attempt.ok) {
-          lastError = new Error(`Сервер: ${attempt.status} ${attempt.statusText}`);
-          continue;
-        }
-        res = attempt;
-        activeBaseUrl = base;
-        break;
+        if (!attempt.ok) { lastError = new Error(`Сервер: ${attempt.status} ${attempt.statusText}`); continue; }
+        res = attempt; activeBaseUrl = base; break;
       } catch (e) {
         if (e.name === 'AbortError') throw e;
         lastError = e;
       }
     }
-
-    if (!res) {
-      throw (lastError || new Error('Не удалось подключиться ни к localhost, ни к ngrok'));
-    }
+    if (!res) throw (lastError || new Error('Не удалось подключиться ни к localhost, ни к ngrok'));
 
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
@@ -550,16 +510,13 @@ async function sendMessage() {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const lines = decoder.decode(value, { stream: true }).split('\n').filter(l => l.startsWith('data: '));
-      for (const line of lines) {
+      for (const line of decoder.decode(value, { stream: true }).split('\n').filter(l => l.startsWith('data: '))) {
         const d = line.slice(6).trim();
         if (d === '[DONE]') break;
         try {
-          const delta = JSON.parse(d).choices?.[0]?.delta?.content || '';
-          fullText += delta;
+          fullText += JSON.parse(d).choices?.[0]?.delta?.content || '';
           streamBubble.innerHTML = renderMarkdown(fullText);
-          if (typeof hljs !== 'undefined')
-            streamBubble.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+          if (typeof hljs !== 'undefined') streamBubble.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
           document.getElementById('chatMessages').scrollTop = 999999;
         } catch {}
       }
@@ -591,7 +548,6 @@ function stopGeneration() {
   if (currentAbort) { currentAbort.abort(); currentAbort = null; }
 }
 
-// Утилиты
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -601,21 +557,17 @@ function startChat() {
   document.querySelector('.chat-section').scrollIntoView({ behavior: 'smooth' });
 }
 
-// Init
+// ── Init ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('chatInput').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape' && editingMsgIndex !== null) cancelEdit();
   });
 
-  document.getElementById('attachBtn').addEventListener('click', () => {
-    document.getElementById('fileInput').click();
-  });
+  document.getElementById('attachBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+  document.getElementById('fileInput').addEventListener('change', e => { if (e.target.files[0]) handleAnyFile(e.target.files[0]); });
 
-  document.getElementById('fileInput').addEventListener('change', e => {
-    if (e.target.files[0]) handleAnyFile(e.target.files[0]);
-  });
-
+  initTheme();
   setupDragDrop();
   createNewSession();
   renderSessionList();
@@ -623,8 +575,5 @@ document.addEventListener('DOMContentLoaded', () => {
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
 
-  // На телефонах стартует со скрытой панелью сессий, чтобы не перекрывала чат
-  if (window.matchMedia('(max-width: 480px)').matches) {
-    closeSessionsPanel();
-  }
+  if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 });

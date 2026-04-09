@@ -45,12 +45,14 @@ body::after {
   z-index: 0;
 }
 
-.app-layout { position: relative; z-index: 1; }
+/* z-index inherited from body */
 
 .container {
   max-width: 1020px;
   margin: 0 auto;
   padding: 0 36px;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Header ── */
@@ -900,19 +902,6 @@ footer .logo { font-size: 17px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); }
 
-/* ── Header left ── */
-.header-left { display: flex; align-items: center; gap: 12px; }
-
-/* ── Responsive ── */
-@media (max-width: 640px) {
-  .container { padding: 0 18px; }
-  header { flex-direction: column; gap: 14px; }
-  footer { flex-direction: column; gap: 14px; text-align: center; }
-  h1 { font-size: 46px; }
-  .sessions-panel { width: 170px; }
-  :root { --sessions-w: 170px; }
-  .chat-header-info { flex-direction: column; align-items: flex-start; gap: 4px; }
-}
 
 @media (max-width: 480px) {
   .sessions-panel:not(.collapsed) { position: absolute; left: 0; top: 0; bottom: 0; z-index: 5; width: 200px !important; }
