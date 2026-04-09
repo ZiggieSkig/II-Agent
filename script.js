@@ -263,6 +263,7 @@ function newSession() {
   document.getElementById('chatMessages').innerHTML = '';
   appendMsg('agent', renderMarkdown('Новая сессия. Чем займёмся?'), getTime());
   renderSessionList();
+  if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 }
 
 function loadSession(id) {
@@ -304,6 +305,7 @@ function loadSession(id) {
 
   renderSessionList();
   document.getElementById('chatMessages').scrollTop = 999999;
+  if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 }
 
 function deleteSession(id, e) {
@@ -430,6 +432,13 @@ function toggleSessionsPanel() {
   const btn   = document.querySelector('.sessions-toggle-btn');
   panel.classList.toggle('collapsed');
   btn.classList.toggle('active');
+}
+
+function closeSessionsPanel() {
+  const panel = document.getElementById('sessionsPanel');
+  const btn   = document.querySelector('.sessions-toggle-btn');
+  panel.classList.add('collapsed');
+  btn.classList.remove('active');
 }
 
 function closeSidebar() {}
@@ -608,4 +617,9 @@ document.addEventListener('DOMContentLoaded', () => {
   appendMsg('agent', renderMarkdown('Готов. Напиши задачу, перетащи изображение или файл.'), getTime());
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
+
+  // На телефонах стартуем со скрытой панелью сессий, чтобы не перекрывала чат.
+  if (window.matchMedia('(max-width: 480px)').matches) {
+    closeSessionsPanel();
+  }
 });

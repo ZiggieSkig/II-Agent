@@ -266,6 +266,12 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   flex-shrink: 0;
 }
 
+.sessions-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .sessions-panel-title {
   font-family: 'Cormorant Garamond', serif;
   font-size: 13px;
@@ -291,6 +297,26 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 }
 
 .sessions-panel-new:hover {
+  color: var(--accent);
+  border-color: var(--accent2);
+  background: var(--accent-light);
+}
+
+.sessions-panel-close {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  transition: all 0.18s;
+}
+
+.sessions-panel-close:hover {
   color: var(--accent);
   border-color: var(--accent2);
   background: var(--accent-light);
@@ -890,5 +916,6 @@ footer .logo { font-size: 17px; }
 
 @media (max-width: 480px) {
   .sessions-panel:not(.collapsed) { position: absolute; left: 0; top: 0; bottom: 0; z-index: 5; width: 200px !important; }
+  .sessions-panel-close { display: flex; }
 }
 
