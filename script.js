@@ -756,7 +756,14 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('attachBtn').addEventListener('click', () => {
     document.getElementById('fileInput').click();
   });
-
+  const chatMessages = document.getElementById('chatMessages');
+  chatMessages.addEventListener('wheel', (e) => {
+    const atTop = chatMessages.scrollTop === 0;
+    const atBottom = chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 1;
+    if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
+      e.preventDefault();
+  }
+}, { passive: false });
   document.getElementById('fileInput').addEventListener('change', e => {
     if (e.target.files[0]) handleAnyFile(e.target.files[0]);
   });
