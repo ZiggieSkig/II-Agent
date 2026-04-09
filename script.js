@@ -1,15 +1,22 @@
-const API_BASES = [
-  'http://localhost:1234',
-  'https://recappable-shana-pseudoinvalid.ngrok-free.dev'
-];
+const LOCAL_API_BASE = 'http://localhost:1234';
+const REMOTE_API_BASE = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
 const DEFAULT_MODEL = 'google/gemma-3-4b';
 let activeBaseUrl = null;
 
+function isLocalFrontendHost() {
+  const host = window.location.hostname;
+  return host === '' || host === 'localhost' || host === '127.0.0.1';
+}
+
 function buildCandidateBases() {
+  const preferredBases = isLocalFrontendHost()
+    ? [LOCAL_API_BASE, REMOTE_API_BASE]
+    : [REMOTE_API_BASE];
+
   if (activeBaseUrl) {
-    return [activeBaseUrl, ...API_BASES.filter(base => base !== activeBaseUrl)];
+    return [activeBaseUrl, ...preferredBases.filter(base => base !== activeBaseUrl)];
   }
-  return [...API_BASES];
+  return [...preferredBases];
 }
 
 function buildApiUrl(base, path) {
