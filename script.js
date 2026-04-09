@@ -1,25 +1,40 @@
-// ── Настройки — загружаются из localStorage ──────────────────────────
-function getSettings() {
-  try { return JSON.parse(localStorage.getItem('xxxl_settings') || '{}'); } catch { return {}; }
+const API_BASES = [
+  'http://localhost:1234',
+  'https://recappable-shana-pseudoinvalid.ngrok-free.dev'
+];
+const DEFAULT_MODEL = 'google/gemma-3-4b';
+let activeBaseUrl = null;
+
+function buildCandidateBases() {
+  if (activeBaseUrl) {
+    return [activeBaseUrl, ...API_BASES.filter(base => base !== activeBaseUrl)];
+  }
+  return [...API_BASES];
 }
 
-function getLMUrl() {
-  const s = getSettings();
-  const base = (s.ngrokUrl || '').replace(/\/+$/, '');
-  if (base) return base + '/v1/chat/completions';
-  return 'http://localhost:1234/v1/chat/completions';
-}
-
-function getModelsUrl() {
-  const s = getSettings();
-  const base = (s.ngrokUrl || '').replace(/\/+$/, '');
-  if (base) return base + '/v1/models';
-  return 'http://localhost:1234/v1/models';
+function buildApiUrl(base, path) {
+  return `${base.replace(/\/+$/, '')}${path}`;
 }
 
 function getModelName() {
-  const s = getSettings();
-  return s.modelName || 'google/gemma-3-4b';
+  return DEFAULT_MODEL;
+}
+
+async function resolveAvailableBase(timeoutMs = 4000) {
+  for (const base of buildCandidateBases()) {
+    try {
+      const r = await fetch(buildApiUrl(base, '/v1/models'), {
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: getHeaders()
+      });
+      if (r.ok) {
+        activeBaseUrl = base;
+        return base;
+      }
+    } catch {}
+  }
+  activeBaseUrl = null;
+  throw new Error('Не удалось подключиться ни к localhost, ни к ngrok');
 }
 
 // ── ngrok bypass заголовок (нужен для бесплатного плана) ─────────────
@@ -79,32 +94,28 @@ async function checkNetworkStatus() {
   const hTxt = document.getElementById('statusText');
   const cDot = document.getElementById('chatNetDot');
   const cTxt = document.getElementById('chatNetText');
-  function on() {
+
+  function on(base) {
+    const label = base.includes('localhost') ? 'Нейросеть активна (локально)' : 'Нейросеть активна';
     hDot.style.cssText = 'background:#6ab04c;box-shadow:0 0 6px #6ab04c;animation:pulse 2.5s infinite';
-    hTxt.textContent   = 'Нейросеть активна';
+    hTxt.textContent = label;
     cDot.style.cssText = 'background:#6ab04c;box-shadow:0 0 5px #6ab04c;animation:pulse 2.5s infinite';
-    cTxt.textContent   = 'Нейросеть активна';
-  }
-  function off(reason) {
-    hDot.style.cssText = 'background:#e55039;box-shadow:0 0 6px #e55039;animation:none';
-    hTxt.textContent   = reason || 'Нейросеть недоступна';
-    cDot.style.cssText = 'background:#e55039;box-shadow:0 0 5px #e55039;animation:none';
-    cTxt.textContent   = reason || 'Нейросеть недоступна';
+    cTxt.textContent = label;
   }
 
-  const s = getSettings();
-  if (!s.ngrokUrl) {
-    off('Укажи ngrok URL →');
-    return;
+  function off(reason) {
+    hDot.style.cssText = 'background:#e55039;box-shadow:0 0 6px #e55039;animation:none';
+    hTxt.textContent = reason || 'Нейросеть недоступна';
+    cDot.style.cssText = 'background:#e55039;box-shadow:0 0 5px #e55039;animation:none';
+    cTxt.textContent = reason || 'Нейросеть недоступна';
   }
 
   try {
-    const r = await fetch(getModelsUrl(), {
-      signal: AbortSignal.timeout(5000),
-      headers: getHeaders()
-    });
-    r.ok ? on() : off('Ошибка сервера');
-  } catch { off('Нейросеть недоступна'); }
+    const base = await resolveAvailableBase(2500);
+    on(base);
+  } catch {
+    off('Нейросеть недоступна');
+  }
 }
 
 // ── Добавить сообщение ───────────────────────────────────────────────
@@ -423,70 +434,6 @@ function toggleSessionsPanel() {
 
 function closeSidebar() {}
 
-// ── Settings Modal ────────────────────────────────────────────────────
-function openSettings() {
-  const s = getSettings();
-  document.getElementById('ngrokUrlInput').value  = s.ngrokUrl   || '';
-  document.getElementById('modelNameInput').value = s.modelName  || 'google/gemma-3-4b';
-  document.getElementById('modalStatus').innerHTML = '';
-  document.getElementById('settingsModal').classList.add('open');
-}
-
-function closeSettings() {
-  document.getElementById('settingsModal').classList.remove('open');
-}
-
-function closeSettingsOutside(e) {
-  if (e.target.id === 'settingsModal') closeSettings();
-}
-
-function saveSettings() {
-  const url   = document.getElementById('ngrokUrlInput').value.trim().replace(/\/+$/, '');
-  const model = document.getElementById('modelNameInput').value.trim();
-
-  localStorage.setItem('xxxl_settings', JSON.stringify({ ngrokUrl: url, modelName: model || 'google/gemma-3-4b' }));
-
-  const st = document.getElementById('modalStatus');
-  st.className = 'modal-status ok';
-  st.textContent = 'Сохранено.';
-  setTimeout(() => { closeSettings(); checkNetworkStatus(); }, 800);
-}
-
-async function testConnection() {
-  const url   = document.getElementById('ngrokUrlInput').value.trim().replace(/\/+$/, '');
-  const st    = document.getElementById('modalStatus');
-
-  if (!url) {
-    st.className = 'modal-status err';
-    st.textContent = 'Сначала введи ngrok URL.';
-    return;
-  }
-
-  st.className = 'modal-status';
-  st.textContent = 'Проверяю...';
-
-  try {
-    const r = await fetch(url + '/v1/models', {
-      signal: AbortSignal.timeout(6000),
-      headers: { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' }
-    });
-    if (r.ok) {
-      st.className = 'modal-status ok';
-      st.textContent = '✓ Соединение установлено. LM Studio отвечает.';
-    } else {
-      st.className = 'modal-status err';
-      st.textContent = `Сервер ответил с ошибкой: ${r.status} ${r.statusText}`;
-    }
-  } catch (e) {
-    st.className = 'modal-status err';
-    if (e.name === 'TimeoutError') {
-      st.textContent = 'Таймаут. Проверь что ngrok запущен и LM Studio работает.';
-    } else {
-      st.textContent = 'Не удалось подключиться. Возможно CORS не включён в LM Studio.';
-    }
-  }
-}
-
 // ── Отправить / переотправить ─────────────────────────────────────────
 async function sendMessage() {
   const input   = document.getElementById('chatInput');
@@ -495,13 +442,6 @@ async function sendMessage() {
   const text    = input.value.trim();
 
   if (!text && !attachedImage && !attachedFile) return;
-
-  // Проверка — есть ли URL
-  const s = getSettings();
-  if (!s.ngrokUrl) {
-    appendMsg('agent', renderMarkdown('Сначала укажи ngrok URL в настройках подключения (кнопка в шапке).'), getTime());
-    return;
-  }
 
   // ── Режим редактирования ──────────────────────────────────────────
   if (editingMsgIndex !== null) {
@@ -558,18 +498,37 @@ async function sendMessage() {
   let fullText = '';
 
   try {
-    const res = await fetch(getLMUrl(), {
-      method: 'POST',
-      headers: getHeaders(),
-      signal: currentAbort.signal,
-      body: JSON.stringify({
-        model: getModelName(),
-        messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
-        temperature: 0.7, max_tokens: 2048, stream: true
-      })
-    });
+    let res = null;
+    let lastError = null;
+    for (const base of buildCandidateBases()) {
+      try {
+        const attempt = await fetch(buildApiUrl(base, '/v1/chat/completions'), {
+          method: 'POST',
+          headers: getHeaders(),
+          signal: currentAbort.signal,
+          body: JSON.stringify({
+            model: getModelName(),
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
+            temperature: 0.7, max_tokens: 2048, stream: true
+          })
+        });
 
-    if (!res.ok) throw new Error(`Сервер: ${res.status} ${res.statusText}`);
+        if (!attempt.ok) {
+          lastError = new Error(`Сервер: ${attempt.status} ${attempt.statusText}`);
+          continue;
+        }
+        res = attempt;
+        activeBaseUrl = base;
+        break;
+      } catch (e) {
+        if (e.name === 'AbortError') throw e;
+        lastError = e;
+      }
+    }
+
+    if (!res) {
+      throw (lastError || new Error('Не удалось подключиться ни к localhost, ни к ngrok'));
+    }
 
     const reader  = res.body.getReader();
     const decoder = new TextDecoder();
@@ -633,7 +592,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('chatInput').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape' && editingMsgIndex !== null) cancelEdit();
-    if (e.key === 'Escape') closeSettings();
   });
 
   document.getElementById('attachBtn').addEventListener('click', () => {
@@ -643,12 +601,6 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fileInput').addEventListener('change', e => {
     if (e.target.files[0]) handleAnyFile(e.target.files[0]);
   });
-
-  // Если ngrok не настроен — открываем модалку автоматически
-  const s = getSettings();
-  if (!s.ngrokUrl) {
-    setTimeout(() => openSettings(), 600);
-  }
 
   setupDragDrop();
   createNewSession();

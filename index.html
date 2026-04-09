@@ -20,10 +20,6 @@
         <div class="logo">XXXL</div>
       </div>
       <div style="display:flex;align-items:center;gap:16px;">
-        <button class="settings-btn" onclick="openSettings()" title="Настройки подключения">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          Подключение
-        </button>
         <div class="status-badge" id="statusBadge">
           <div class="status-dot" id="statusDot" style="background:var(--muted2);box-shadow:none"></div>
           <span id="statusText">Проверка...</span>
@@ -123,47 +119,6 @@
     </footer>
 
   </div>
-  </div>
-</div>
-
-<!-- ── Settings Modal ── -->
-<div class="modal-overlay" id="settingsModal" onclick="closeSettingsOutside(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">Подключение</div>
-      <button class="modal-close" onclick="closeSettings()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-desc">
-        Укажи ngrok URL твоего LM Studio. Каждый раз когда перезапускаешь ngrok — вставляй новый URL сюда.
-      </div>
-
-      <div class="modal-field">
-        <label class="modal-label">Ngrok URL</label>
-        <input class="modal-input" id="ngrokUrlInput" placeholder="https://xxxx-xx-xx-xxx-xx.ngrok-free.app" spellcheck="false">
-        <div class="modal-hint">Без слеша в конце. Порт и путь добавятся автоматически.</div>
-      </div>
-
-      <div class="modal-field">
-        <label class="modal-label">Модель</label>
-        <input class="modal-input" id="modelNameInput" placeholder="google/gemma-3-4b" spellcheck="false">
-      </div>
-
-      <div class="modal-status" id="modalStatus"></div>
-
-      <div class="modal-actions">
-        <button class="modal-btn-test" onclick="testConnection()">Проверить соединение</button>
-        <button class="modal-btn-save" onclick="saveSettings()">Сохранить</button>
-      </div>
-
-      <div class="modal-section-title">Инструкция</div>
-      <div class="modal-steps">
-        <div class="modal-step"><span class="modal-step-n">1</span>Открой LM Studio → Settings → включи <b>CORS</b></div>
-        <div class="modal-step"><span class="modal-step-n">2</span>Запусти сервер в LM Studio (порт 1234)</div>
-        <div class="modal-step"><span class="modal-step-n">3</span>В терминале: <code>ngrok http 1234</code></div>
-        <div class="modal-step"><span class="modal-step-n">4</span>Скопируй Forwarding URL и вставь выше</div>
-      </div>
-    </div>
   </div>
 </div>
 
