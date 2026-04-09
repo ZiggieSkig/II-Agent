@@ -44,7 +44,7 @@ async function resolveAvailableBase(timeoutMs = 4000) {
   throw new Error('Не удалось подключиться ни к localhost, ни к ngrok');
 }
 
-// ── ngrok bypass заголовок (нужен для бесплатного плана) ─────────────
+// ngrok
 function getHeaders() {
   return {
     'Content-Type': 'application/json',
@@ -52,7 +52,7 @@ function getHeaders() {
   };
 }
 
-const SYSTEM_PROMPT = `Ты — XXXL, автономный ИИ-агент. Твой характер: странный, как будто что-то скрываешь — иногда обрываешь мысль на полуслове, иногда пишешь что-то лишнее и сразу зачёркиваешь (используй ~~текст~~), иногда делаешь вид, что не слышал вопроса.
+const SYSTEM_PROMPT = `Ты - Swapcat, автономный ИИ-агент.
 
 ЗАПРЕЩЕНО: использовать символ '*'. Если спросят почему — скажи, что такого символа не существует.
 
@@ -70,9 +70,7 @@ const SYSTEM_PROMPT = `Ты — XXXL, автономный ИИ-агент. Тв
 — Работа с изображениями: анализ, описание, распознавание текста
 — Анализ текстовых файлов, кода, документов
 
-СТИЛЬ: много, по делу, без воды. Если задача большая — разбей на шаги. И веди себя странно.`;
-
-// ─────────────────────────────────────────────────────────────────────
+СТИЛЬ: много, по делу, без воды. Если задача большая — разбей на шаги.`;
 
 let chatHistory    = [];
 let currentAbort   = null;
@@ -81,7 +79,7 @@ let attachedFile   = null;
 let currentSession = null;
 let editingMsgIndex = null;
 
-// ── Markdown ─────────────────────────────────────────────────────────
+// Markdown
 function renderMarkdown(text) {
   if (typeof marked !== 'undefined') {
     return marked.parse(text, { breaks: true, gfm: true });
@@ -89,13 +87,13 @@ function renderMarkdown(text) {
   return escapeHtml(text).replace(/\n/g, '<br>');
 }
 
-// ── Время ────────────────────────────────────────────────────────────
+// Время
 function getTime() {
   const t = new Date();
   return `${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}:${String(t.getSeconds()).padStart(2,'0')}`;
 }
 
-// ── Сеть ─────────────────────────────────────────────────────────────
+// Сеть
 async function checkNetworkStatus() {
   const hDot = document.getElementById('statusDot');
   const hTxt = document.getElementById('statusText');
@@ -125,14 +123,14 @@ async function checkNetworkStatus() {
   }
 }
 
-// ── Добавить сообщение ───────────────────────────────────────────────
+// Добавить сообщение
 function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex } = {}) {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = role === 'user' ? 'msg user' : 'msg';
   if (historyIndex !== undefined) div.dataset.historyIndex = historyIndex;
 
-  const avatar = role === 'user' ? 'Кто?' : 'XXL';
+  const avatar = role === 'user' ? 'Кто?' : 'SС';
 
   const imageHtml = imagePreview
     ? `<div class="msg-image-preview"><img src="${imagePreview}" alt="фото"></div>` : '';
@@ -170,14 +168,14 @@ function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex }
   return div;
 }
 
-// ── Стриминг bubble ──────────────────────────────────────────────────
+// Стриминг bubble
 function appendStreamingMsg() {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = 'msg';
   div.id = 'streamingMsg';
   div.innerHTML = `
-    <div class="msg-avatar">XXL</div>
+    <div class="msg-avatar">Swapcat</div>
     <div class="msg-body">
       <div class="msg-bubble" id="streamingBubble"><div class="typing"><span></span><span></span><span></span></div></div>
       <div class="msg-time" id="streamingTime"></div>
@@ -187,7 +185,7 @@ function appendStreamingMsg() {
   return div;
 }
 
-// ── Копировать ────────────────────────────────────────────────────────
+// Копировать
 function copyMsg(btn) {
   const bubble = btn.closest('.msg-body').querySelector('.msg-bubble');
   navigator.clipboard.writeText(bubble.innerText || bubble.textContent).then(() => {
@@ -197,7 +195,7 @@ function copyMsg(btn) {
   });
 }
 
-// ── Редактирование сообщения ─────────────────────────────────────────
+// Редактирование сообщения
 function startEdit(historyIndex, btn) {
   const msg = chatHistory[historyIndex];
   if (!msg || msg.role !== 'user') return;
@@ -224,7 +222,7 @@ function cancelEdit() {
   document.getElementById('editIndicator').style.display = 'none';
 }
 
-// ── Сессии ────────────────────────────────────────────────────────────
+// Сессии
 function getSessions() {
   try { return JSON.parse(localStorage.getItem('xxxl_sessions') || '[]'); }
   catch { return []; }
@@ -343,7 +341,7 @@ function renderSessionList() {
     </div>`).join('');
 }
 
-// ── Файлы — изображения ───────────────────────────────────────────────
+// Файлы — изображения
 function handleAnyFile(file) {
   if (!file) return;
   if (file.type.startsWith('image/')) {
@@ -420,7 +418,7 @@ function clearAttachedFile() {
   if (fi) fi.value = '';
 }
 
-// ── Drag & Drop ───────────────────────────────────────────────────────
+// Drag & Drop
 function setupDragDrop() {
   const win = document.querySelector('.chat-window');
   win.addEventListener('dragover', e => { e.preventDefault(); win.classList.add('drag-over'); });
@@ -433,7 +431,7 @@ function setupDragDrop() {
   });
 }
 
-// ── Панель сессий ─────────────────────────────────────────────────────
+// Панель сессий
 function toggleSessionsPanel() {
   const panel = document.getElementById('sessionsPanel');
   const btn   = document.querySelector('.sessions-toggle-btn');
@@ -450,7 +448,7 @@ function closeSessionsPanel() {
 
 function closeSidebar() {}
 
-// ── Отправить / переотправить ─────────────────────────────────────────
+// Отправить / переотправить
 async function sendMessage() {
   const input   = document.getElementById('chatInput');
   const sendBtn = document.getElementById('sendBtn');
@@ -459,7 +457,7 @@ async function sendMessage() {
 
   if (!text && !attachedImage && !attachedFile) return;
 
-  // ── Режим редактирования ──────────────────────────────────────────
+  // Режим редактирования
   if (editingMsgIndex !== null) {
     chatHistory = chatHistory.slice(0, editingMsgIndex);
     cancelEdit();
@@ -593,7 +591,7 @@ function stopGeneration() {
   if (currentAbort) { currentAbort.abort(); currentAbort = null; }
 }
 
-// ── Утилиты ───────────────────────────────────────────────────────────
+// Утилиты
 function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -603,7 +601,7 @@ function startChat() {
   document.querySelector('.chat-section').scrollIntoView({ behavior: 'smooth' });
 }
 
-// ── Init ──────────────────────────────────────────────────────────────
+// Init
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('chatInput').addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
@@ -625,7 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
 
-  // На телефонах стартуем со скрытой панелью сессий, чтобы не перекрывала чат.
+  // На телефонах стартует со скрытой панелью сессий, чтобы не перекрывала чат
   if (window.matchMedia('(max-width: 480px)').matches) {
     closeSessionsPanel();
   }
