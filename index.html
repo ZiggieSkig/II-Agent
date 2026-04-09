@@ -4,20 +4,23 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Swapcat - ИИ Агент</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<link rel="stylesheet" href="style.css?v=20260409-2">
+<link rel="stylesheet" href="style.css?v=20260409-3">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700&family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
 <script>
-  (function(){
-    const t = localStorage.getItem('swapcat_theme') ||
-              (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
-    if (t === 'dark') document.documentElement.setAttribute('data-theme','dark');
-  })();
+(function(){
+  var t = localStorage.getItem('swapcat_theme') ||
+          (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', t);
+})();
 </script>
 </head>
 <body>
+
+<div class="toast-container" id="toastContainer"></div>
+
 <div class="container">
 
   <header>
@@ -34,24 +37,15 @@
     </div>
   </header>
 
-
   <section class="hero">
     <div class="hero-tag"><span>v.1</span> — персональный AI-ассистент</div>
-    <h1>
-      ИИ агент,<br>
-      который <em>думает</em><br>
-      <span class="dim">с вами</span>
-    </h1>
-    <p class="hero-desc">
-      Swapcat помогает писать, анализировать и ускорять работу.
-      Один интерфейс для задач, файлов и быстрых сессий.
-    </p>
+    <h1>ИИ агент,<br>который <em>думает</em><br><span class="dim">с вами</span></h1>
+    <p class="hero-desc">Swapcat помогает писать, анализировать и ускорять работу. Один интерфейс для задач, файлов и быстрых сессий.</p>
     <button class="btn-primary" onclick="startChat()">Начать сессию</button>
   </section>
 
   <section class="chat-section" id="chatSection">
     <div class="section-label">Интерфейс Swapcat</div>
-
     <div class="chat-shell">
 
       <div class="sessions-panel" id="sessionsPanel">
@@ -70,7 +64,6 @@
       </div>
 
       <div class="chat-window" id="chatWindow">
-
         <div class="chat-header">
           <button class="sessions-toggle-btn" onclick="toggleSessionsPanel()" title="Сессии">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -106,7 +99,7 @@
             <button class="attach-btn" id="attachBtn" title="Прикрепить файл или изображение">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
             </button>
-            <input class="chat-input" id="chatInput" placeholder="Введите задачу, перетащите файл или изображение...">
+            <textarea class="chat-input" id="chatInput" placeholder="Введите задачу, перетащите файл или изображение..." rows="1"></textarea>
             <button class="send-btn" id="sendBtn" onclick="sendMessage()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
@@ -129,7 +122,6 @@
 
 </div>
 
-<script src="script.js?v=20260409-2"></script>
-<div class="toast-container" id="toastContainer"></div>
+<script src="script.js?v=20260409-3"></script>
 </body>
 </html>
