@@ -175,7 +175,7 @@ function appendStreamingMsg() {
   div.className = 'msg';
   div.id = 'streamingMsg';
   div.innerHTML = `
-    <div class="msg-avatar">Swapcat</div>
+    <div class="msg-avatar">SC</div>
     <div class="msg-body">
       <div class="msg-bubble" id="streamingBubble"><div class="typing"><span></span><span></span><span></span></div></div>
       <div class="msg-time" id="streamingTime"></div>
