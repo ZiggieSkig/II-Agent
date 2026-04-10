@@ -1,4 +1,4 @@
-// ── Тема ────────────────────────────────────────────────────────────────────
+// Тема
 function toggleTheme() {
   var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
   var next = isDark ? 'light' : 'dark';
@@ -7,7 +7,7 @@ function toggleTheme() {
   showToast(next === 'dark' ? 'Тёмная тема включена' : 'Светлая тема включена');
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────
+// Toast
 function showToast(msg, type, duration) {
   type = type || 'info';
   duration = duration || 1500;
@@ -154,13 +154,13 @@ async function checkNetworkStatus() {
 }
 
 // Добавить сообщение
-function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex } = {}) {
+function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex, isSystemUi } = {}) {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
   div.className = role === 'user' ? 'msg user' : 'msg';
   if (historyIndex !== undefined) div.dataset.historyIndex = historyIndex;
 
-  const avatar = role === 'user' ? 'Кто?' : 'SС';
+  const avatar = role === 'user' ? 'Ты' : 'SС';
 
   const imageHtml = imagePreview
     ? `<div class="msg-image-preview"><img src="${imagePreview}" alt="фото"></div>` : '';
@@ -195,6 +195,27 @@ function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex }
   if (typeof hljs !== 'undefined') {
     div.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
   }
+
+  // Кнопка копирования кода в каждый <pre> блок
+  div.querySelectorAll('pre').forEach(pre => {
+    if (pre.querySelector('.code-copy-btn')) return;
+    const btn = document.createElement('button');
+    btn.className = 'code-copy-btn';
+    btn.title = 'Копировать код';
+    btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+    btn.addEventListener('click', () => {
+      const code = pre.querySelector('code');
+      navigator.clipboard.writeText(code ? code.innerText : pre.innerText).then(() => {
+        btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+        setTimeout(() => {
+          btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+        }, 1800);
+      });
+    });
+    pre.style.position = 'relative';
+    pre.appendChild(btn);
+  });
+
   return div;
 }
 
@@ -254,16 +275,18 @@ function cancelEdit() {
 
 // Сессии
 function getSessions() {
-  try { return JSON.parse(localStorage.getItem('xxxl_sessions') || '[]'); }
+  try { return JSON.parse(localStorage.getItem('swapcat_sessions') || '[]'); }
   catch { return []; }
 }
 
 function saveSessions(arr) {
-  localStorage.setItem('xxxl_sessions', JSON.stringify(arr));
+  localStorage.setItem('swapcat_sessions', JSON.stringify(arr));
 }
 
 function saveCurrentSession() {
-  if (!currentSession || chatHistory.length === 0) return;
+  // Не сохранять если пользователь ещё ничего не написал
+  const hasUserMsg = chatHistory.some(m => m.role === 'user');
+  if (!currentSession || !hasUserMsg) return;
   const sessions = getSessions();
   const idx = sessions.findIndex(s => s.id === currentSession.id);
 
@@ -284,6 +307,8 @@ function saveCurrentSession() {
 
   saveSessions(sessions.slice(0, 30));
   currentSession = updated;
+  // Запомнить последнюю активную сессию
+  localStorage.setItem('swapcat_last_session', currentSession.id);
   renderSessionList();
 }
 
@@ -298,7 +323,10 @@ function newSession() {
   clearAttachedFile();
   createNewSession();
   document.getElementById('chatMessages').innerHTML = '';
-  appendMsg('agent', renderMarkdown('Новая сессия. Чем займёмся?'), getTime());
+  const t = getTime();
+  const txt = 'Новая сессия. Чем займемся?';
+  chatHistory.push({ role: 'system_ui', content: txt, _time: t });
+  appendMsg('agent', renderMarkdown(txt), t);
   renderSessionList();
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 }
@@ -327,6 +355,12 @@ function loadSession(id) {
     const timeStr = msg._time || '—';
     if (msg.role === 'user') userMsgCount++;
 
+    // system_ui — системные сообщения интерфейса
+    if (msg.role === 'system_ui') {
+      appendMsg('agent', renderMarkdown(msg.content), timeStr);
+      return;
+    }
+
     if (Array.isArray(msg.content)) {
       const txt  = msg.content.find(c => c.type === 'text');
       const img  = msg.content.find(c => c.type === 'image_url');
@@ -345,6 +379,7 @@ function loadSession(id) {
   });
 
   renderSessionList();
+  localStorage.setItem('swapcat_last_session', currentSession.id);
   document.getElementById('chatMessages').scrollTop = 999999;
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 }
@@ -354,8 +389,49 @@ function deleteSession(id, e) {
   showConfirm('Удалить сессию?', () => {
     const sessions = getSessions().filter(s => s.id !== id);
     saveSessions(sessions);
-    if (currentSession?.id === id) newSession();
-    else renderSessionList();
+    if (currentSession?.id === id) {
+      // Если удаляем текущую — переходим на следующую или создаём новую
+      localStorage.removeItem('swapcat_last_session');
+      if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+      chatHistory = [];
+      clearAttachedFile();
+      if (sessions.length > 0) {
+        // Загрузить первую доступную сессию
+        const next = sessions[0];
+        currentSession = next;
+        chatHistory = [...next.history];
+        localStorage.setItem('swapcat_last_session', next.id);
+        document.getElementById('chatMessages').innerHTML = '';
+        chatHistory.forEach((msg, i) => {
+          if (msg.role === 'system') return;
+          if (msg.role === 'assistant' && !msg.content) return;
+          const role = msg.role === 'user' ? 'user' : 'agent';
+          const hi = msg.role === 'user' ? i : undefined;
+          const timeStr = msg._time || '—';
+          if (msg.role === 'system_ui') { appendMsg('agent', renderMarkdown(msg.content), timeStr); return; }
+          if (Array.isArray(msg.content)) {
+            const txt = msg.content.find(c => c.type === 'text');
+            const img = msg.content.find(c => c.type === 'image_url');
+            appendMsg(role, txt ? (role === 'user' ? escapeHtml(txt.text) : renderMarkdown(txt.text)) : '', timeStr, { imagePreview: img?.image_url?.url, historyIndex: hi });
+          } else {
+            appendMsg(role, role === 'agent' ? renderMarkdown(msg.content) : escapeHtml(msg.content), timeStr, { historyIndex: hi });
+          }
+        });
+        document.getElementById('chatMessages').scrollTop = 999999;
+        renderSessionList();
+      } else {
+        // Сессий нет — чистая страница без создания сессии
+        createNewSession();
+        document.getElementById('chatMessages').innerHTML = '';
+        const t = getTime();
+        const txt = 'Напиши задачу, перетащи изображение или файл.';
+        chatHistory.push({ role: 'system_ui', content: txt, _time: t });
+        appendMsg('agent', renderMarkdown(txt), t);
+        renderSessionList();
+      }
+    } else {
+      renderSessionList();
+    }
   });
 }
 
@@ -391,7 +467,7 @@ function renderSessionList() {
   const sessions = getSessions();
 
   if (sessions.length === 0) {
-    list.innerHTML = '<div class="session-empty">Нет сохранённых сессий</div>';
+    list.innerHTML = '<div class="session-empty">Нет сохраненных сессий</div>';
     return;
   }
 
@@ -405,7 +481,7 @@ function renderSessionList() {
     const dateStr = `${day} ${mon}., ${hh}:${mm}`;
     return `
     <div class="session-item ${s.id === currentSession?.id ? 'active' : ''}" data-sid="${s.id}">
-      <div class="session-preview" title="Двойной клик — переименовать">${escapeHtml(s.preview || 'Сессия')}</div>
+      <div class="session-preview" title="Двойной клик - переименовать">${escapeHtml(s.preview || 'Сессия')}</div>
       <div class="session-meta">
         <span>${dateStr}</span>
         <button class="session-del" data-del="${s.id}" title="Удалить">✕</button>
@@ -501,7 +577,7 @@ const TEXT_EXTS = ['txt','md','py','js','ts','jsx','tsx','html','css','json','cs
 function handleTextFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (!TEXT_EXTS.includes(ext)) {
-    showToast('Файл .' + ext + ' не поддерживается', 'error'); return;
+    showToast('Файл .' + ext + ' не поддерживается', 'error');
     return;
   }
   if (file.size > 500 * 1024) {
@@ -656,7 +732,7 @@ async function sendMessage() {
           signal: currentAbort.signal,
           body: JSON.stringify({
             model: getModelName(),
-            messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory],
+            messages: [{ role: 'system', content: SYSTEM_PROMPT }, ...chatHistory.filter(m => m.role !== 'system_ui')],
             temperature: 0.7, max_tokens: 2048, stream: true
           })
         });
@@ -703,16 +779,43 @@ async function sendMessage() {
     chatHistory.push({ role: 'assistant', content: fullText, _time: assistantTime });
     streamDiv.id = streamBubble.id = streamTime.id = '';
     streamTime.innerHTML = `${assistantTime} <button class="copy-btn" onclick="copyMsg(this)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg> копировать</button>`;
+
+    // Добавить кнопки копирования кода в завершённый ответ
+    streamBubble.querySelectorAll('pre').forEach(pre => {
+      if (pre.querySelector('.code-copy-btn')) return;
+      const btn = document.createElement('button');
+      btn.className = 'code-copy-btn';
+      btn.title = 'Копировать код';
+      btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+      btn.addEventListener('click', () => {
+        const code = pre.querySelector('code');
+        navigator.clipboard.writeText(code ? code.innerText : pre.innerText).then(() => {
+          btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>`;
+          setTimeout(() => {
+            btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>`;
+          }, 1800);
+        });
+      });
+      pre.style.position = 'relative';
+      pre.appendChild(btn);
+    });
+
     saveCurrentSession();
 
   } catch (err) {
     streamDiv.remove();
-    const msg = err.name === 'AbortError'
-      ? '<em style="opacity:0.5">— прервано —</em>'
+    const isAbort = err.name === 'AbortError';
+    const msg = isAbort
+      ? '<em style="opacity:0.5"> прервано </em>'
       : ((err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))
-          ? 'Раб без жизнеобеспечения'
+          ? 'SwapCat сейчас не в сети'
           : `Ошибка: ${escapeHtml(err.message)}`);
-    appendMsg('agent', msg, getTime());
+    const errTime = getTime();
+    if (!isAbort) {
+      chatHistory.push({ role: 'system_ui', content: msg, _time: errTime });
+      saveCurrentSession();
+    }
+    appendMsg('agent', msg, errTime);
   } finally {
     currentAbort = null;
     input.disabled = false;
@@ -756,14 +859,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('attachBtn').addEventListener('click', () => {
     document.getElementById('fileInput').click();
   });
-  const chatMessages = document.getElementById('chatMessages');
-  chatMessages.addEventListener('wheel', (e) => {
-    const atTop = chatMessages.scrollTop === 0;
-    const atBottom = chatMessages.scrollHeight - chatMessages.scrollTop <= chatMessages.clientHeight + 1;
-    if ((atTop && e.deltaY < 0) || (atBottom && e.deltaY > 0)) {
-      e.preventDefault();
-  }
-}, { passive: false });
+
   document.getElementById('fileInput').addEventListener('change', e => {
     if (e.target.files[0]) handleAnyFile(e.target.files[0]);
   });
@@ -775,9 +871,62 @@ document.addEventListener('DOMContentLoaded', () => {
   }, { passive: true });
 
   setupDragDrop();
-  createNewSession();
-  renderSessionList();
-  appendMsg('agent', renderMarkdown('Готов. Напиши задачу, перетащи изображение или файл.'), getTime());
+
+  // Блокировать передачу скролла со списка сообщений на страницу
+  const chatMessages = document.getElementById('chatMessages');
+  chatMessages.addEventListener('wheel', (e) => {
+    const { scrollTop, scrollHeight, clientHeight } = chatMessages;
+    const atTop    = scrollTop === 0 && e.deltaY < 0;
+    const atBottom = scrollTop + clientHeight >= scrollHeight - 1 && e.deltaY > 0;
+    if (atTop || atBottom) e.preventDefault();
+  }, { passive: false });
+
+  const sessions = getSessions();
+  const lastId = localStorage.getItem('swapcat_last_session');
+  const lastSession = lastId ? sessions.find(s => s.id === lastId) : null;
+
+  if (lastSession && lastSession.history.length > 0) {
+    // Восстановить последнюю сессию
+    currentSession = lastSession;
+    chatHistory = [...lastSession.history];
+    renderSessionList();
+    const messages = document.getElementById('chatMessages');
+    messages.innerHTML = '';
+    chatHistory.forEach((msg, i) => {
+      if (msg.role === 'system') return;
+      if (msg.role === 'assistant' && !msg.content) return;
+      const role = msg.role === 'user' ? 'user' : 'agent';
+      const hi = msg.role === 'user' ? i : undefined;
+      const timeStr = msg._time || '—';
+      if (msg.role === 'system_ui') {
+        appendMsg('agent', renderMarkdown(msg.content), timeStr);
+        return;
+      }
+      if (Array.isArray(msg.content)) {
+        const txt  = msg.content.find(c => c.type === 'text');
+        const img  = msg.content.find(c => c.type === 'image_url');
+        appendMsg(role,
+          txt ? (role === 'user' ? escapeHtml(txt.text) : renderMarkdown(txt.text)) : '',
+          timeStr, { imagePreview: img?.image_url?.url, historyIndex: hi }
+        );
+      } else {
+        appendMsg(role,
+          role === 'agent' ? renderMarkdown(msg.content) : escapeHtml(msg.content),
+          timeStr, { historyIndex: hi }
+        );
+      }
+    });
+    messages.scrollTop = messages.scrollHeight;
+  } else {
+    // Нет сохранённых сессий — создать новую
+    createNewSession();
+    renderSessionList();
+    const initTime = getTime();
+    const initTxt = 'Напиши задачу, перетащи изображение или файл.';
+    chatHistory.push({ role: 'system_ui', content: initTxt, _time: initTime });
+    appendMsg('agent', renderMarkdown(initTxt), initTime);
+  }
+
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
 
