@@ -1122,13 +1122,39 @@ function setupDragDrop() {
 // ============================================================
 
 function toggleSessionsPanel() {
-  document.getElementById('sessionsPanel').classList.toggle('collapsed');
+  const panel = document.getElementById('sessionsPanel');
+  const isCollapsed = panel.classList.contains('collapsed');
+  panel.classList.toggle('collapsed');
   document.querySelector('.sessions-toggle-btn').classList.toggle('active');
+
+  // На мобильных показываем/скрываем оверлей для закрытия панели тапом по чату
+  if (window.matchMedia('(max-width: 480px)').matches) {
+    if (isCollapsed) {
+      showSessionsOverlay();
+    } else {
+      hideSessionsOverlay();
+    }
+  }
 }
 
 function closeSessionsPanel() {
   document.getElementById('sessionsPanel').classList.add('collapsed');
   document.querySelector('.sessions-toggle-btn').classList.remove('active');
+  hideSessionsOverlay();
+}
+
+function showSessionsOverlay() {
+  if (document.getElementById('sessionsPanelOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'sessionsPanelOverlay';
+  overlay.style.cssText = 'position:absolute;inset:0;z-index:10;background:transparent;cursor:pointer;';
+  overlay.addEventListener('click', () => closeSessionsPanel());
+  const chatWindow = document.getElementById('chatWindow');
+  if (chatWindow) chatWindow.appendChild(overlay);
+}
+
+function hideSessionsOverlay() {
+  document.getElementById('sessionsPanelOverlay')?.remove();
 }
 
 
@@ -1460,4 +1486,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // На мобильных скрываем панель сессий по умолчанию (перекрывает чат)
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
+
+  // Адаптивный placeholder для поля ввода
+  const mq = window.matchMedia('(max-width: 640px)');
+  const updatePlaceholder = (e) => {
+    chatInput.placeholder = e.matches ? 'Введите задачу...' : 'Введите задачу, перетащите файл или изображение...';
+  };
+  updatePlaceholder(mq);
+  mq.addEventListener('change', updatePlaceholder);
 });

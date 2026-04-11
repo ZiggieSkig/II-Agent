@@ -1480,20 +1480,108 @@ html[data-theme="dark"] .icon-moon { display: block; }
   margin-bottom: 4px;
 }
 
-/* ── Responsive ── */
-@media (max-width: 640px) {
-  .container { padding: 0 18px; }
-  header { flex-direction: column; gap: 14px; padding-left: 18px; padding-right: 18px; margin-left: -18px; margin-right: -18px; }
-  footer { flex-direction: column; gap: 14px; text-align: center; }
-  h1 { font-size: 46px; }
-  .sessions-panel { width: 170px; }
-  :root { --sessions-w: 170px; }
-  .chat-header-info { flex-direction: column; align-items: flex-start; gap: 4px; }
+/* ═══════════════════════════════════════════
+   RESPONSIVE — ПЛАНШЕТ
+═══════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .container { padding: 0 20px; }
+  header { padding-left: 20px; padding-right: 20px; margin-left: -20px; margin-right: -20px; }
+  h1 { font-size: clamp(38px, 9vw, 60px); }
+  .hero { padding: 52px 0 44px; }
+  .chat-shell { height: 75vh; max-height: 75vh; }
 }
 
-@media (max-width: 480px) {
-  .sessions-panel:not(.collapsed) { position: absolute; left: 0; top: 0; bottom: 0; z-index: 5; width: 200px !important; }
+/* ═══════════════════════════════════════════
+   RESPONSIVE — ТЕЛЕФОН
+═══════════════════════════════════════════ */
+@media (max-width: 640px) {
+  /* Базовые отступы */
+  .container { padding: 0 14px; }
+
+  /* Шапка — в одну строку, компактная */
+  header {
+    padding: 12px 14px;
+    margin-left: -14px;
+    margin-right: -14px;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  /* Логотип чуть меньше */
+  .logo { font-size: 17px; letter-spacing: 0.22em; }
+
+  /* Статус-бейдж — скрываем текст, оставляем только точку */
+  .status-badge { padding: 5px 8px; font-size: 11px; gap: 6px; }
+
+  /* Hero — компактный */
+  .hero { padding: 36px 0 32px; }
+  h1 { font-size: clamp(34px, 10vw, 52px); line-height: 1.05; margin-bottom: 18px; }
+  .hero-desc { font-size: 12px; margin-bottom: 28px; }
+  .hero-tag { font-size: 8.5px; margin-bottom: 18px; }
+
+  /* Chat section */
+  .chat-section { padding: 28px 0 8px; }
+
+  /* Chat shell — на весь экран по высоте */
+  .chat-shell {
+    height: calc(100svh - 160px);
+    max-height: none;
+    border-radius: 4px;
+  }
+
+  /* Панель сессий — выезжает поверх как drawer */
+  .sessions-panel:not(.collapsed) {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    z-index: 10;
+    width: 240px !important;
+    box-shadow: 4px 0 24px rgba(36,30,24,0.18);
+    border-radius: 4px 0 0 4px;
+  }
   .sessions-panel-close { display: flex; }
+  :root { --sessions-w: 240px; }
+
+  /* Шапка чата — убираем лишнее */
+  .chat-header { padding: 8px 12px; gap: 8px; }
+  .chat-header-dots { display: none; }
+  .chat-header-info { margin-left: 2px; }
+  .chat-header-session { font-size: 11px; }
+
+  /* Кнопка "новая сессия" — только иконка */
+  .new-session-btn span { display: none; }
+  .new-session-btn { padding: 5px 8px; font-size: 10px; gap: 0; }
+
+  /* Сообщения */
+  .chat-messages { padding: 16px 14px; gap: 12px; }
+  .msg-bubble { font-size: 13px; padding: 10px 13px; }
+  .msg-avatar { width: 28px; height: 28px; font-size: 8px; flex-shrink: 0; }
+
+  /* Поле ввода */
+  .chat-input-area { padding: 8px 10px; }
+  .chat-input { font-size: 14px; }
+  .send-btn, .stop-btn { width: 36px; height: 36px; }
+  .attach-btn { width: 34px; height: 34px; }
+
+  /* Кнопки действий */
+  .btn-primary { padding: 11px 22px; font-size: 9.5px; }
+
+  /* Footer */
+  footer { flex-direction: column; gap: 10px; text-align: center; padding: 18px 0; }
+  footer .logo { font-size: 15px; }
+
+  /* Тосты */
+  .toast-container { bottom: 16px; right: 12px; left: 12px; }
+  .toast { min-width: unset; max-width: 100%; font-size: 11px; }
+}
+
+/* ═══════════════════════════════════════════
+   RESPONSIVE — МАЛЕНЬКИЙ ТЕЛЕФОН
+═══════════════════════════════════════════ */
+@media (max-width: 380px) {
+  h1 { font-size: 30px; }
+  .chat-shell { height: calc(100svh - 140px); }
+  .status-badge span { display: none; }
+  .status-badge { border-radius: 50%; width: 28px; height: 28px; padding: 0; justify-content: center; }
 }
 
 
@@ -1518,3 +1606,18 @@ html[data-theme="dark"] .icon-moon { display: block; }
   color: var(--accent);
   font-weight: 500;
 }
+
+/* ── Touch / мобильные улучшения ── */
+* { -webkit-tap-highlight-color: transparent; }
+
+button { touch-action: manipulation; }
+
+/* Убираем zoom на input на iOS */
+@media (max-width: 640px) {
+  input, textarea, select {
+    font-size: 16px !important; /* iOS не зумит если >= 16px */
+  }
+  .chat-input { font-size: 16px !important; }
+  .session-rename-input { font-size: 16px !important; }
+}
+
