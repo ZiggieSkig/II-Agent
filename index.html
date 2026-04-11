@@ -55,6 +55,9 @@
             <button class="sessions-panel-new" onclick="newSession()" title="Новая сессия">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             </button>
+            <button class="sessions-panel-clear" onclick="clearAllSessions()" title="Очистить все сессии">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+            </button>
             <button class="sessions-panel-close" onclick="closeSessionsPanel()" title="Закрыть">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -75,10 +78,6 @@
           </div>
           <div class="chat-header-info">
             <span class="chat-header-session" id="chatHeaderSession">Swapcat — ИИ агент</span>
-            <div class="chat-net-status">
-              <div class="chat-net-dot" id="chatNetDot"></div>
-              <span id="chatNetText">Проверка...</span>
-            </div>
           </div>
           <button class="new-session-btn" onclick="newSession()">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -109,7 +108,7 @@
           </div>
         </div>
 
-        <input type="file" id="fileInput" accept="image/*,.txt,.md,.py,.js,.ts,.jsx,.tsx,.html,.css,.json,.csv,.xml,.yaml,.yml,.sh,.c,.cpp,.h,.java,.go,.rs,.rb,.php,.sql,.log,.toml,.ini" style="display:none">
+        <input type="file" id="fileInput" multiple accept="image/*,.txt,.md,.py,.js,.ts,.jsx,.tsx,.html,.css,.json,.csv,.xml,.yaml,.yml,.sh,.c,.cpp,.h,.java,.go,.rs,.rb,.php,.sql,.log,.toml,.ini" style="display:none">
       </div>
 
     </div>

@@ -105,6 +105,7 @@ header.scrolled {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  color: var(--muted);
   border: 1px solid var(--border-light);
   padding: 5px 12px;
   border-radius: 20px;
@@ -199,7 +200,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 
 /* ── Chat section ── */
 .chat-section {
-  padding: 52px 0 80px;
+  padding: 52px 0 20px;
   animation: fadeUp 0.8s ease 0.18s both;
 }
 
@@ -351,13 +352,31 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   background: var(--accent-light);
 }
 
+.sessions-panel-clear {
+  display: flex;
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  transition: all 0.18s;
+}
+
+.sessions-panel-clear:hover {
+  color: #d44;
+  border-color: #d44;
+  background: var(--accent-light);
+}
+
 .session-list {
   flex: 1;
   overflow-y: auto;
   padding: 6px 0;
 }
-
-
 
 .session-empty {
   padding: 20px 14px;
@@ -437,7 +456,18 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 
 .session-del:hover { color: #d44; }
 
-/* ── Chat window (right side) ── */
+.session-streaming-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--accent, #c4855a);
+  margin-right: 5px;
+  vertical-align: middle;
+  animation: pulse 1.2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+
 .chat-window {
   flex: 1;
   min-width: 0;
@@ -776,7 +806,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 }
 
 /* Copy/edit buttons */
-.copy-btn, .edit-btn, .quote-btn {
+.copy-btn, .edit-btn {
   background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 2px;
@@ -793,7 +823,7 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   letter-spacing: 0.06em;
 }
 
-.copy-btn:hover, .edit-btn:hover, .quote-btn:hover {
+.copy-btn:hover, .edit-btn:hover {
   background: var(--accent);
   color: #f4ede3;
   border-color: var(--accent);
@@ -866,16 +896,15 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
   font-weight: 600;
   color: var(--text);
   letter-spacing: 0.04em;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 
-.confirm-msg {
-  font-size: 11px;
+.confirm-subtitle {
+  font-size: 11.5px;
   color: var(--muted);
+  line-height: 1.7;
   margin-bottom: 24px;
-  letter-spacing: 0.04em;
-  font-family: 'DM Mono', monospace;
-  line-height: 1.6;
+  font-weight: 300;
 }
 
 .confirm-btns {
@@ -931,9 +960,15 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 /* ── Input area ── */
 .chat-input-area {
   border-top: 1px solid var(--border-light);
-  padding: 13px 18px;
+  padding: 13px 18px 20px;
   background: var(--surface);
   flex-shrink: 0;
+  border-radius: 0 0 5px 0;
+}
+
+/* При редактировании */
+.chat-window.editing .edit-indicator {
+  border-radius: 0;
 }
 
 .chat-input-row {
@@ -1011,15 +1046,40 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 .attach-preview {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 10px;
   padding: 8px 0 0;
 }
 
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(122,79,46,0.05);
+  padding: 4px 8px;
+  max-width: 100%;
+}
+
+.attach-chip-name {
+  font-size: 10.5px;
+  color: var(--accent);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attach-chip-file {
+  background: transparent;
+}
+
 .attach-preview img {
-  max-height: 60px;
-  max-width: 90px;
+  max-height: 38px;
+  max-width: 54px;
   object-fit: cover;
-  border-radius: 2px;
+  border-radius: 6px;
   border: 1px solid var(--border);
 }
 
@@ -1059,48 +1119,89 @@ h1 .dim { color: var(--muted2); font-weight: 300; }
 
 /* ── Edit indicator ── */
 .edit-indicator {
-  background: rgba(122,79,46,0.05);
-  border-top: 1px solid rgba(122,79,46,0.16);
-  padding: 7px 18px;
+  background: linear-gradient(135deg, rgba(122,79,46,0.06) 0%, rgba(184,112,64,0.04) 100%);
+  border-top: 1px solid rgba(122,79,46,0.18);
+  padding: 8px 18px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 11.5px;
+  gap: 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
   flex-shrink: 0;
+  color: var(--accent);
+  font-family: 'DM Mono', monospace;
 }
 
-.edit-indicator span { flex: 1; }
+.edit-indicator svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.edit-indicator span {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 10px;
+  color: var(--accent2);
+}
 
 .edit-indicator button {
   background: none;
-  border: none;
+  border: 1px solid rgba(122,79,46,0.2);
   cursor: pointer;
   color: var(--muted);
-  font-size: 11.5px;
-  transition: color 0.15s;
+  font-size: 10px;
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: 2px;
+  transition: all 0.15s;
 }
 
-.edit-indicator button:hover { color: var(--text); }
+.edit-indicator button:hover {
+  color: var(--text);
+  border-color: var(--accent2);
+  background: var(--accent-light);
+}
 
-.chat-input-area.editing { border-top-color: rgba(122,79,46,0.28); }
+.chat-input-area.editing {
+  border-top-color: rgba(122,79,46,0.28);
+
+}
 
 /* ── File badge in message ── */
 .msg-file-badge {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  background: rgba(122,79,46,0.05);
-  border: 1px solid rgba(122,79,46,0.16);
-  border-radius: 2px;
-  padding: 4px 9px;
-  font-size: 10.5px;
+  gap: 9px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: var(--text);
+  margin-bottom: 6px;
+  max-width: 280px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.msg-file-badge svg {
+  flex-shrink: 0;
   color: var(--accent);
-  margin-bottom: 5px;
-  max-width: 100%;
+}
+.msg-file-badge-name {
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text);
 }
+.msg.user .msg-file-badge {
+  background: rgba(122,79,46,0.07);
+  border-color: rgba(122,79,46,0.22);
+}
+
 
 /* ── Footer ── */
 footer {
@@ -1257,9 +1358,6 @@ html[data-theme="dark"] .chat-messages,
 html[data-theme="dark"] .session-list {
   scrollbar-color: var(--border-light) transparent;
 }
-
-/* ── Header left ── */
-.header-left { display: flex; align-items: center; gap: 12px; }
 
 /* ═══════════════════════════════════════════
    THEME TOGGLE BUTTON
