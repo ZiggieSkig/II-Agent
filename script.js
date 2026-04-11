@@ -472,7 +472,7 @@ function restoreImagesFromSession(sessionId, history) {
 }
 
 // Паттерны транзиентных ошибок — не нужно хранить между сессиями
-const TRANSIENT_ERROR_PATTERNS = ['Error in input stream', 'SwapCat сейчас не в сети', 'Failed to fetch', 'NetworkError'];
+const TRANSIENT_ERROR_PATTERNS = ['Error in input stream', 'Failed to fetch', 'NetworkError'];
 
 // Убирает из истории: пустые ответы ИИ и временные ошибки сети
 function cleanTransientErrors(history) {
@@ -571,6 +571,14 @@ function createNewSession() {
 // Переключается на новую пустую сессию.
 // Активный стриминг НЕ прерывается — продолжается в фоне.
 function newSession() {
+  // Проверяем лимит сессий
+  const MAX_SESSIONS = 30;
+  const existingSessions = getSessions();
+  if (existingSessions.length >= MAX_SESSIONS) {
+    showToast('Достигнут лимит ' + MAX_SESSIONS + ' сессий. Удалите старые чтобы создать новую.', 'error', 3000);
+    return;
+  }
+
   saveCurrentSession();
   // Убираем стриминг-элемент из DOM (он фоновый, не прерываем)
   document.getElementById('streamingMsg')?.remove();
@@ -589,6 +597,7 @@ function newSession() {
   const txt = 'Новая сессия. Чем займемся?';
   chatHistory.push({ role: 'system_ui', content: txt, _time: t });
   appendMsg('agent', renderMarkdown(txt), t);
+
   renderSessionList();
 
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
@@ -598,6 +607,7 @@ function newSession() {
 // Если загружаемая сессия сейчас стримит — пересоздаёт живой пузырь.
 function loadSession(id) {
   if (currentSession?.id === id) return;
+  _newReplyIds.delete(id);
   saveCurrentSession();
 
   const s = getSessions().find(s => s.id === id);
@@ -660,7 +670,13 @@ function deleteSession(id, e) {
 
     if (currentSession?.id === id) {
       localStorage.removeItem('swapcat_last_session');
-      if (currentAbort) { currentAbort.abort(); currentAbort = null; }
+      if (currentAbort) {
+        currentAbort.abort(); currentAbort = null; streamingSessionId = null;
+        activeStreamDiv = null; activeStreamBubble = null; activeStreamTime = null; activeStreamText = '';
+        document.getElementById('sendBtn').style.display = 'flex';
+        document.getElementById('stopBtn').style.display = 'none';
+        document.getElementById('chatInput').disabled = false;
+      }
       chatHistory = [];
       clearAttachedFiles();
 
@@ -685,6 +701,7 @@ function deleteSession(id, e) {
 
 // Удаляет все сессии с подтверждением
 function clearAllSessions() {
+  if (getSessions().filter(s => s.history?.some(m => m.role === 'user')).length === 0) return;
   showConfirm({
     title:        'Очистить историю',
     subtitle:     'Все сессии будут удалены без возможности восстановления.',
@@ -738,14 +755,86 @@ function defaultTrashIcon() {
   return `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>`;
 }
 
+// Помечает сессию как имеющую непрочитанный ответ
+const _newReplyIds = new Set();
+function markSessionHasNewReply(sessionId) {
+  _newReplyIds.add(sessionId);
+  renderSessionList();
+}
+
+// Тост с кликом для перехода на сессию
+function showClickableToast(msg, sessionId) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const t = document.createElement('div');
+  t.className = 'toast toast-success';
+  t.style.cursor = 'pointer';
+  t.innerHTML = msg + ' <span style="opacity:0.6;font-size:10px">→</span>';
+  container.appendChild(t);
+  const remove = () => {
+    t.classList.add('toast-out');
+    t.addEventListener('animationend', () => t.remove(), { once: true });
+  };
+  const timer = setTimeout(remove, 4000);
+  t.addEventListener('click', () => {
+    clearTimeout(timer);
+    remove();
+    loadSession(sessionId);
+  });
+}
+
+// Навешивает обработчики на один session-item
+function bindSessionItem(item) {
+  const sid = item.dataset.sid;
+  let clickTimer = null;
+  item.addEventListener('click', () => {
+    if (clickTimer) return;
+    clickTimer = setTimeout(() => { clickTimer = null; loadSession(sid); }, 220);
+  });
+  item.querySelector('.session-preview').addEventListener('dblclick', e => {
+    e.stopPropagation();
+    clearTimeout(clickTimer); clickTimer = null;
+    startRenameSession(sid, e.target);
+  });
+  item.querySelector('.session-del').addEventListener('click', e => {
+    e.stopPropagation();
+    clearTimeout(clickTimer); clickTimer = null;
+    deleteSession(sid, e);
+  });
+}
+
 // Рендерит список сессий в боковой панели.
-// Показывает только сессии с хотя бы одним сообщением пользователя.
-// Одиночный клик — загрузить, двойной — переименовать, крестик — удалить.
+// Полный перерендер — надёжно и просто.
+// Анимация streaming-dot сохраняется: элемент пересоздаётся, но CSS-анимация
+// перезапускается что визуально незаметно при редких вызовах.
 function renderSessionList() {
   const list = document.getElementById('sessionsList');
   if (!list) return;
 
-  const sessions = getSessions().filter(s => s.history?.some(m => m.role === 'user'));
+  const MAX_SESSIONS  = 30;
+  const allSessions   = getSessions();
+  const sessions      = allSessions.filter(s => s.history?.some(m => m.role === 'user'));
+
+  // Блокируем / разблокируем кнопку «+»
+  const newBtn        = document.querySelector('.sessions-panel-new');
+  const newSessionBtn = document.querySelector('.new-session-btn');
+  const clearBtn = document.querySelector('.sessions-panel-clear');
+  const hasSessions = sessions.length > 0;
+
+  // Кнопка очистки — активна только если есть сессии
+  if (clearBtn) {
+    clearBtn.disabled = !hasSessions;
+    clearBtn.style.opacity = hasSessions ? '' : '0.3';
+    clearBtn.style.cursor  = hasSessions ? '' : 'not-allowed';
+  }
+
+  if (allSessions.length >= MAX_SESSIONS) {
+    if (newBtn)        { newBtn.disabled = true; newBtn.title = 'Лимит ' + MAX_SESSIONS + ' сессий достигнут'; newBtn.style.opacity = '0.35'; newBtn.style.cursor = 'not-allowed'; }
+    if (newSessionBtn) { newSessionBtn.disabled = true; newSessionBtn.style.opacity = '0.35'; newSessionBtn.style.cursor = 'not-allowed'; newSessionBtn.title = 'Лимит ' + MAX_SESSIONS + ' сессий достигнут'; }
+  } else {
+    if (newBtn)        { newBtn.disabled = false; newBtn.title = 'Новая сессия'; newBtn.style.opacity = ''; newBtn.style.cursor = ''; }
+    if (newSessionBtn) { newSessionBtn.disabled = false; newSessionBtn.style.opacity = ''; newSessionBtn.style.cursor = ''; newSessionBtn.title = ''; }
+  }
 
   if (sessions.length === 0) {
     list.innerHTML = '<div class="session-empty">Нет сохраненных сессий</div>';
@@ -754,43 +843,32 @@ function renderSessionList() {
 
   const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 
+  // Запоминаем какие streaming-dot сейчас живые чтобы не сбить анимацию
+  const streamingIds = new Set(
+    [...list.querySelectorAll('.session-streaming-dot')]
+      .map(el => el.closest('.session-item')?.dataset.sid)
+      .filter(Boolean)
+  );
+
   list.innerHTML = sessions.map(s => {
-    const d       = new Date(s.updatedAt);
-    const dateStr = `${d.getDate()} ${months[d.getMonth()]}., ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-    // Индикатор фонового стриминга (генерация идёт пока пользователь в другой сессии)
-    const isStreaming  = currentAbort && streamingSessionId === s.id && s.id !== currentSession?.id;
-    const streamingDot = isStreaming ? `<span class="session-streaming-dot" title="Генерация..."></span>` : '';
-    return `
-    <div class="session-item ${s.id === currentSession?.id ? 'active' : ''}" data-sid="${s.id}">
-      <div class="session-preview" title="Двойной клик — переименовать">${streamingDot}${escapeHtml(s.preview || 'Сессия')}</div>
-      <div class="session-meta">
-        <span>${dateStr}</span>
-        <button class="session-del" data-del="${s.id}" title="Удалить">✕</button>
-      </div>
+    const d           = new Date(s.updatedAt);
+    const dateStr     = `${d.getDate()} ${months[d.getMonth()]}., ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const isActive    = s.id === currentSession?.id;
+    const isStreaming = currentAbort && streamingSessionId === s.id && s.id !== currentSession?.id;
+    const hasNewReply = _newReplyIds.has(s.id) && !isActive;
+    const dot         = isStreaming
+      ? `<span class="session-streaming-dot" title="Генерация..."></span>`
+      : hasNewReply
+        ? `<span class="session-new-reply-dot" title="Новый ответ"></span>`
+        : '';
+    return `<div class="session-item${isActive ? ' active' : ''}${hasNewReply ? ' has-new-reply' : ''}" data-sid="${s.id}">
+      <div class="session-preview" title="Двойной клик — переименовать">${dot}${escapeHtml(s.preview || 'Сессия')}</div>
+      <div class="session-meta"><span>${dateStr}</span><button class="session-del" title="Удалить">✕</button></div>
     </div>`;
   }).join('');
 
   list.querySelectorAll('.session-item').forEach(item => {
-    const sid = item.dataset.sid;
-    let clickTimer = null;
-
-    // Одиночный клик с небольшой задержкой чтобы отличить от двойного
-    item.addEventListener('click', () => {
-      if (clickTimer) return;
-      clickTimer = setTimeout(() => { clickTimer = null; loadSession(sid); }, 220);
-    });
-
-    item.querySelector('.session-preview').addEventListener('dblclick', e => {
-      e.stopPropagation();
-      clearTimeout(clickTimer); clickTimer = null;
-      startRenameSession(sid, e.target);
-    });
-
-    item.querySelector('.session-del').addEventListener('click', e => {
-      e.stopPropagation();
-      clearTimeout(clickTimer); clickTimer = null;
-      deleteSession(sid, e);
-    });
+    bindSessionItem(item);
   });
 }
 
@@ -1175,7 +1253,7 @@ async function sendMessage() {
         const attempt = await fetch(buildApiUrl(base, '/v1/chat/completions'), {
           method:  'POST',
           headers: getHeaders(),
-          signal:  currentAbort.signal,
+          signal:  streamAbort.signal,
           body: JSON.stringify({
             model:       DEFAULT_MODEL,
             messages:    [{ role: 'system', content: SYSTEM_PROMPT }, ...sanitizeHistoryForApi(chatHistory)],
@@ -1271,18 +1349,23 @@ async function sendMessage() {
         }
       } else {
         const errMsg = isStreamError ? 'SwapCat сейчас не в сети' : `Ошибка: ${escapeHtml(err.message)}`;
-        if (!isStreamError) streamChatHistory.push({ role: 'system_ui', content: errMsg, _time: errTime });
+        // Сохраняем частичный текст ответа если успел накопиться
         if (fullText) streamChatHistory.push({ role: 'assistant', content: fullText, _time: errTime });
-        if (fullText || !isStreamError) saveBgSession(streamSessionId, streamChatHistory);
-        appendMsg('agent', renderMarkdown(fullText || errMsg), errTime);
+        // Сохраняем сообщение об ошибке всегда
+        streamChatHistory.push({ role: 'system_ui', content: errMsg, _time: errTime });
+        saveBgSession(streamSessionId, streamChatHistory);
+        // Показываем частичный текст отдельным пузырём если есть
+        if (fullText) appendMsg('agent', renderMarkdown(fullText), errTime);
+        // Показываем ошибку отдельным пузырём
+        appendMsg('agent', renderMarkdown(errMsg), errTime);
       }
     } else {
-      // Ошибка в фоновой сессии — тихо сохраняем что успели
+      // Ошибка в фоновой сессии — сохраняем всё включая ошибку
       activeStreamDiv?.remove();
-      if (fullText) {
-        streamChatHistory.push({ role: 'assistant', content: fullText, _time: errTime });
-        saveBgSession(streamSessionId, streamChatHistory);
-      }
+      if (fullText) streamChatHistory.push({ role: 'assistant', content: fullText, _time: errTime });
+      const bgErrMsg = isStreamError ? 'SwapCat сейчас не в сети' : `Ошибка: ${escapeHtml(err.message)}`;
+      streamChatHistory.push({ role: 'system_ui', content: bgErrMsg, _time: errTime });
+      saveBgSession(streamSessionId, streamChatHistory);
     }
   } finally {
     // Разблокируем UI — только если эта сессия сейчас активна
@@ -1293,9 +1376,29 @@ async function sendMessage() {
       sendBtn.style.display = 'flex';
       stopBtn.style.display = 'none';
       input.focus();
-    } else if (streamAbort === currentAbort) {
-      currentAbort = null; streamingSessionId = null;
+    } else {
+      // Стриминг завершился пока пользователь был в другой сессии.
+      // Если сейчас вернулись на эту сессию — перерендериваем историю чтобы показать ответ.
+      // Если нет — просто чистим глобальные ссылки.
+      const wasThisSession = streamSessionId;
+      if (streamAbort === currentAbort) currentAbort = null;
+      streamingSessionId = null;
       activeStreamDiv = null; activeStreamBubble = null; activeStreamTime = null; activeStreamText = '';
+
+      // Если пользователь уже вернулся на эту сессию — рендерим историю
+      if (currentSession?.id === wasThisSession) {
+        chatHistory = cleanTransientErrors(restoreImagesFromSession(wasThisSession, [...streamChatHistory]));
+        renderHistory(chatHistory);
+        input.disabled        = false;
+        sendBtn.style.display = 'flex';
+        stopBtn.style.display = 'none';
+        input.focus();
+      } else {
+        // Пользователь в другой сессии — помечаем сессию как "есть новый ответ"
+        // и показываем кликабельный тост
+        markSessionHasNewReply(wasThisSession);
+        showClickableToast('Ответ готов — нажми чтобы перейти', wasThisSession);
+      }
     }
   }
 }
@@ -1344,10 +1447,10 @@ document.addEventListener('DOMContentLoaded', () => {
     renderHistory(chatHistory);
   } else {
     createNewSession();
-    renderSessionList();
     const initTime = getTime();
     const initTxt  = 'Напиши задачу, перетащи изображение или файл.';
     chatHistory.push({ role: 'system_ui', content: initTxt, _time: initTime });
+    renderSessionList();
     appendMsg('agent', renderMarkdown(initTxt), initTime);
   }
 
