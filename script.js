@@ -23,10 +23,10 @@ const LOCAL_API_BASE  = 'http://localhost:1234';
 const REMOTE_API_BASE = 'https://recappable-shana-pseudoinvalid.ngrok-free.dev';
 const DEFAULT_MODEL   = 'google/gemma-3-4b';
 
-// Активный base URL — кешируется после первой успешной проверки
+// Активный base URL - кешируется после первой успешной проверки
 let activeBaseUrl = null;
 
-// Системный промпт — инструкции модели
+// Системный промпт - инструкции модели
 const SYSTEM_PROMPT = `Ты — Swapcat, корпоративный ИИ-ассистент технической поддержки предприятия.
 
 ЗАПРЕЩЕНО: использовать символ '*'. Если спросят почему — скажи, что такого символа не существует.
@@ -164,7 +164,7 @@ function quickAsk(text) {
   setTimeout(() => input.focus(), 400);
 }
 
-// Авто-высота textarea — растёт по содержимому до 180px
+// Авто-высота textarea - растёт по содержимому до 180px
 function autoResizeTextarea(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 180) + 'px';
@@ -172,7 +172,7 @@ function autoResizeTextarea(el) {
 
 
 // ============================================================
-// 3. СЕТЬ — проверка доступности API
+// 3. СЕТЬ - проверка доступности API
 // ============================================================
 
 // Возвращает список URL для проверки в порядке приоритета.
@@ -189,7 +189,7 @@ function buildApiUrl(base, path) {
   return `${base.replace(/\/+$/, '')}${path}`;
 }
 
-// Заголовки запросов — ngrok требует кастомный заголовок чтобы не показывать warning-страницу
+// Заголовки запросов - ngrok требует кастомный заголовок чтобы не показывать warning-страницу
 function getHeaders() {
   return { 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' };
 }
@@ -260,14 +260,14 @@ function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex }
 
   const bubbleHtml = (html && html.trim()) ? `<div class="msg-bubble">${html}</div>` : '';
 
-  // Кнопка «копировать» — только для сообщений ИИ
+  // Кнопка «копировать» - только для сообщений ИИ
   const copyBtn = role !== 'user'
     ? `<button class="copy-btn" onclick="copyMsg(this)">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         копировать
        </button>` : '';
 
-  // Кнопка «изменить» — только для сообщений пользователя с известным индексом
+  // Кнопка «изменить» - только для сообщений пользователя с известным индексом
   const editBtn = (role === 'user' && historyIndex !== undefined)
     ? `<button class="edit-btn" onclick="startEdit(${historyIndex}, this)">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -318,7 +318,7 @@ function addCodeCopyButtons(container) {
 }
 
 // Создаёт временный пузырь «печатает...» во время стриминга.
-// Возвращает div — он будет обновляться в реальном времени.
+// Возвращает div - он будет обновляться в реальном времени.
 function appendStreamingMsg() {
   const messages = document.getElementById('chatMessages');
   const div = document.createElement('div');
@@ -356,7 +356,7 @@ function renderHistory(history) {
     const hi      = msg.role === 'user' ? i : undefined;
     const timeStr = msg._time || '—';
 
-    // system_ui — служебные сообщения интерфейса («Новая сессия», ошибки)
+    // system_ui - служебные сообщения интерфейса («Новая сессия», ошибки)
     if (msg.role === 'system_ui') {
       appendMsg('agent', renderMarkdown(msg.content), timeStr);
       return;
@@ -435,7 +435,7 @@ function startEdit(historyIndex) {
   document.getElementById('editIndicatorText').textContent = 'Редактирование сообщения';
 }
 
-// Отменяет редактирование — очищает инпут и скрывает индикатор
+// Отменяет редактирование - очищает инпут и скрывает индикатор
 function cancelEdit() {
   editingMsgIndex = null;
   const input = document.getElementById('chatInput');
@@ -481,7 +481,7 @@ function saveSessions(arr) {
   try {
     localStorage.setItem('swapcat_sessions', JSON.stringify(stripped));
   } catch {
-    // localStorage переполнен — обрезаем до 10 сессий и 20 сообщений
+    // localStorage переполнен - обрезаем до 10 сессий и 20 сообщений
     console.warn('localStorage full, trimming sessions');
     const minimal = stripped.slice(0, 10).map(s => ({ ...s, history: s.history.slice(-20) }));
     try { localStorage.setItem('swapcat_sessions', JSON.stringify(minimal)); } catch {}
@@ -503,7 +503,7 @@ function restoreImagesFromSession(sessionId, history) {
   });
 }
 
-// Паттерны транзиентных ошибок — не нужно хранить между сессиями
+// Паттерны транзиентных ошибок - не нужно хранить между сессиями
 const TRANSIENT_ERROR_PATTERNS = ['Error in input stream', 'Failed to fetch', 'NetworkError'];
 
 // Убирает из истории: пустые ответы ИИ и временные ошибки сети
@@ -601,7 +601,7 @@ function createNewSession() {
 }
 
 // Переключается на новую пустую сессию.
-// Активный стриминг НЕ прерывается — продолжается в фоне.
+// Активный стриминг НЕ прерывается - продолжается в фоне.
 function newSession() {
   // Проверяем лимит сессий
   const MAX_SESSIONS = 30;
@@ -635,8 +635,8 @@ function newSession() {
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 }
 
-// Загружает сессию по id — переключает интерфейс на неё.
-// Если загружаемая сессия сейчас стримит — пересоздаёт живой пузырь.
+// Загружает сессию по id - переключает интерфейс на неё.
+// Если загружаемая сессия сейчас стримит - пересоздаёт живой пузырь.
 function loadSession(id) {
   if (currentSession?.id === id) return;
   _newReplyIds.delete(id);
@@ -652,7 +652,7 @@ function loadSession(id) {
   const sendBtn = document.getElementById('sendBtn');
   const stopBtn = document.getElementById('stopBtn');
 
-  // Разблокируем инпут — даже если идёт фоновый стриминг, можно писать в новой сессии
+  // Разблокируем инпут - даже если идёт фоновый стриминг, можно писать в новой сессии
   input.disabled         = false;
   sendBtn.style.display  = 'flex';
   stopBtn.style.display  = 'none';
@@ -667,7 +667,7 @@ function loadSession(id) {
 
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 
-  // Reconnect: если эта сессия сейчас стримит — пересоздаём пузырь и подключаем к живому стримингу
+  // Reconnect: если эта сессия сейчас стримит - пересоздаём пузырь и подключаем к живому стримингу
   if (streamingSessionId === id && activeStreamBubble) {
     const newStreamDiv = appendStreamingMsg();
     const newBubble    = document.getElementById('streamingBubble');
@@ -676,7 +676,7 @@ function loadSession(id) {
     newBubble.innerHTML = renderMarkdown(activeStreamText) || '<div class="typing"><span></span><span></span><span></span></div>';
     document.getElementById('chatMessages').scrollTop = 999999;
 
-    // Переключаем глобальные ссылки — стриминг-цикл продолжит писать в новые элементы
+    // Переключаем глобальные ссылки - стриминг-цикл продолжит писать в новые элементы
     activeStreamDiv    = newStreamDiv;
     activeStreamBubble = newBubble;
     activeStreamTime   = newTime;
@@ -689,7 +689,7 @@ function loadSession(id) {
 }
 
 // Удаляет сессию с подтверждением.
-// Если удаляется текущая — переходим на следующую или создаём новую.
+// Если удаляется текущая - переходим на следующую или создаём новую.
 function deleteSession(id, e) {
   e.stopPropagation();
   showConfirm({
@@ -836,7 +836,7 @@ function bindSessionItem(item) {
 }
 
 // Рендерит список сессий в боковой панели.
-// Полный перерендер — надёжно и просто.
+// Полный перерендер - надёжно и просто.
 // Анимация streaming-dot сохраняется: элемент пересоздаётся, но CSS-анимация
 // перезапускается что визуально незаметно при редких вызовах.
 function renderSessionList() {
@@ -853,7 +853,7 @@ function renderSessionList() {
   const clearBtn = document.querySelector('.sessions-panel-clear');
   const hasSessions = sessions.length > 0;
 
-  // Кнопка очистки — активна только если есть сессии
+  // Кнопка очистки - активна только если есть сессии
   if (clearBtn) {
     clearBtn.disabled = !hasSessions;
     clearBtn.style.opacity = hasSessions ? '' : '0.3';
@@ -928,8 +928,8 @@ function renderSessionList() {
   });
 }
 
-// Inline-переименование сессии — заменяет превью на <input>.
-// Enter / blur — сохранить, Escape — отмена.
+// Inline-переименование сессии - заменяет превью на <input>.
+// Enter / blur - сохранить, Escape - отмена.
 function startRenameSession(id, el) {
   const prev = el.textContent;
   const inp  = document.createElement('input');
@@ -976,7 +976,7 @@ const TEXT_EXTS = ['txt','md','py','js','ts','jsx','tsx','html','css','json','cs
                    'yaml','yml','sh','bash','c','cpp','h','java','go','rs','rb','php',
                    'sql','log','env','toml','ini','cfg'];
 
-// Точка входа для одного файла — определяет тип (изображение / текст)
+// Точка входа для одного файла - определяет тип (изображение / текст)
 function handleAnyFile(file) {
   if (!file) return;
   if (attachedItems.length >= 1) {
@@ -1079,7 +1079,7 @@ function clearAttachedFiles() {
 }
 
 // Вырезает блоки файлов из текста перед отображением в пузыре.
-// Пользователь видит только свой текст — без служебных тегов и инструкций.
+// Пользователь видит только свой текст - без служебных тегов и инструкций.
 function stripFileBlocks(text) {
   if (!text) return '';
   return text
@@ -1102,9 +1102,9 @@ function stripFileBlocks(text) {
 }
 
 // Очищает историю для отправки в API:
-// — убирает system_ui сообщения
-// — изображения передаются ТОЛЬКО в последнем сообщении пользователя
-//   (в истории они не нужны — экономим токены и не путаем модель)
+// - убирает system_ui сообщения
+// - изображения передаются ТОЛЬКО в последнем сообщении пользователя
+//   (в истории они не нужны - экономим токены и не путаем модель)
 function sanitizeHistoryForApi(history) {
   const filtered    = history.filter(m => m.role !== 'system_ui');
   const lastUserIdx = filtered.map((m,i) => m.role === 'user' ? i : -1).filter(i => i >= 0).pop();
@@ -1120,7 +1120,7 @@ function sanitizeHistoryForApi(history) {
         .replace(/\[Пользователь прикрепил файл[^\]]*\]/g, '')
         .replace(/```[\w]*\n\/\/ Файл:[\s\S]*?```/g, '')
         .trim();
-      // Если только файловый контент без текста — добавляем явную инструкцию
+      // Если только файловый контент без текста - добавляем явную инструкцию
       if (!stripped && (msg.content.includes('<file ') || msg.content.trim().startsWith('```'))) {
         return { ...msg, content: 'ЗАДАЧА: Внимательно прочитай файл ниже и кратко опиши его содержимое и назначение.\n\n' + msg.content };
       }
@@ -1134,7 +1134,7 @@ function sanitizeHistoryForApi(history) {
       if (part.type === 'image_url') {
         // В старых сообщениях изображения убираем всегда
         if (!isLastUser) return false;
-        // В последнем — только валидные base64
+        // В последнем - только валидные base64
         return part.image_url?.url?.startsWith('data:');
       }
       return true;
@@ -1148,7 +1148,7 @@ function sanitizeHistoryForApi(history) {
       const finalText = textPart.text || '';
       return finalText ? { ...msg, content: finalText } : null;
     }
-    // Изображение есть, но текст пустой — добавляем дефолтный промпт
+    // Изображение есть, но текст пустой - добавляем дефолтный промпт
     if (hasImage && textPart && !textPart.text) {
       return { ...msg, content: sanitized.map(p => p.type === 'text' ? { ...p, text: 'Опиши что на изображении и помоги с задачей.' } : p) };
     }
@@ -1224,15 +1224,15 @@ function stopGeneration() {
 }
 
 // Главная функция отправки. Работает в двух режимах:
-// — обычный: добавляет новое сообщение в историю и запускает стриминг
-// — редактирование: обрезает историю до редактируемого сообщения, затем то же самое
+// - обычный: добавляет новое сообщение в историю и запускает стриминг
+// - редактирование: обрезает историю до редактируемого сообщения, затем то же самое
 async function sendMessage() {
   const input   = document.getElementById('chatInput');
   const sendBtn = document.getElementById('sendBtn');
   const stopBtn = document.getElementById('stopBtn');
   const text    = input.value.trim();
 
-  // Пустое сообщение — запрещено (особая ошибка в режиме редактирования)
+  // Пустое сообщение - запрещено (особая ошибка в режиме редактирования)
   if (!text && attachedItems.length === 0) {
     if (editingMsgIndex !== null) showToast('Сообщение не может быть пустым', 'error');
     return;
@@ -1273,7 +1273,7 @@ async function sendMessage() {
   });
 
   // Строим контент для API
-  // Метаданные вложений сохраняются отдельно — используются для восстановления превью при рендере истории
+  // Метаданные вложений сохраняются отдельно - используются для восстановления превью при рендере истории
   const _attachMeta = [
     ...imageItems.map(i => ({ kind: 'image', name: i.name, previewUrl: i.previewUrl })),
     ...fileItems.map(f  => ({ kind: 'file',  name: f.name, size: f.size, ext: f.ext  }))
@@ -1282,7 +1282,7 @@ async function sendMessage() {
   let userContent;
 
   if (imageItems.length > 0) {
-    // Изображение → multipart контент [image_url, text]
+    // Изображение - multipart контент [image_url, text]
     const contentParts = imageItems.map(img => ({
       type: 'image_url',
       image_url: { url: `data:${img.mimeType};base64,${img.base64}` }
@@ -1291,7 +1291,7 @@ async function sendMessage() {
     contentParts.push({ type: 'text', text: [text, fileBlocks].filter(Boolean).join('\n\n') || '' });
     userContent = contentParts;
   } else if (fileItems.length > 0) {
-    // Только текстовые файлы → строка с XML-тегами
+    // Только текстовые файлы - строка с XML-тегами
     const fileBlocks  = fileItems.map(f => `<file name="${f.name}" type="${f.ext}">\n${f.content}\n</file>`).join('\n\n');
     const instruction = text
       ? `ЗАДАЧА: ${text}\nФайл прикреплён ниже — прочитай его содержимое и выполни задачу.`
@@ -1312,7 +1312,7 @@ async function sendMessage() {
   sendBtn.style.display = 'none';
   stopBtn.style.display = 'flex';
 
-  // Захватываем контекст стриминга — колбеки будут использовать эти переменные
+  // Захватываем контекст стриминга - колбеки будут использовать эти переменные
   currentAbort       = new AbortController();
   streamingSessionId = currentSession.id;
   const streamDiv    = appendStreamingMsg();
@@ -1376,7 +1376,7 @@ async function sendMessage() {
 
           // Обновляем DOM только если пользователь сейчас смотрит эту сессию
           if (currentSession?.id === streamSessionId && activeStreamBubble) {
-            // Первый реальный токен — убираем typing-анимацию
+            // Первый реальный токен - убираем typing-анимацию
             if (firstChunk) {
               firstChunk = false;
               activeStreamBubble.innerHTML = '';
@@ -1392,12 +1392,12 @@ async function sendMessage() {
       }
     }
 
-    // Стриминг завершён — сохраняем в историю
+    // Стриминг завершён - сохраняем в историю
     const assistantTime = getTime();
     if (fullText) streamChatHistory.push({ role: 'assistant', content: fullText, _time: assistantTime });
 
     if (currentSession?.id === streamSessionId) {
-      // Сессия активна — финализируем DOM (убираем id стриминга, добавляем кнопки)
+      // Сессия активна - финализируем DOM (убираем id стриминга, добавляем кнопки)
       if (activeStreamDiv)    activeStreamDiv.id    = '';
       if (activeStreamBubble) {
         activeStreamBubble.id      = '';
@@ -1411,7 +1411,7 @@ async function sendMessage() {
         activeStreamBubble.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
       if (activeStreamBubble) addCodeCopyButtons(activeStreamBubble.closest('.msg-body') || activeStreamBubble);
     } else {
-      // Сессия в фоне — просто убираем стриминг-div (он там уже не виден)
+      // Сессия в фоне - просто убираем стриминг-div (он там уже не виден)
       activeStreamDiv?.remove();
     }
 
@@ -1428,11 +1428,11 @@ async function sendMessage() {
     const errTime = getTime();
 
     if (currentSession?.id === streamSessionId) {
-      // Ошибка в активной сессии — показываем в DOM
+      // Ошибка в активной сессии - показываем в DOM
       activeStreamDiv?.remove();
 
       if (isAbort) {
-        // Пользователь нажал «Стоп» — сохраняем уже сгенерированный текст если есть
+        // Пользователь нажал «Стоп» - сохраняем уже сгенерированный текст если есть
         if (fullText) {
           streamChatHistory.push({ role: 'assistant', content: fullText, _time: errTime });
           saveBgSession(streamSessionId, streamChatHistory);
@@ -1451,7 +1451,7 @@ async function sendMessage() {
         appendMsg('agent', renderMarkdown(errMsg), errTime);
       }
     } else {
-      // Ошибка в фоновой сессии — сохраняем всё включая ошибку
+      // Ошибка в фоновой сессии - сохраняем всё включая ошибку
       activeStreamDiv?.remove();
       if (fullText) streamChatHistory.push({ role: 'assistant', content: fullText, _time: errTime });
       const bgErrMsg = isStreamError ? 'SwapCat сейчас не в сети' : `Ошибка: ${escapeHtml(err.message)}`;
@@ -1459,7 +1459,7 @@ async function sendMessage() {
       saveBgSession(streamSessionId, streamChatHistory);
     }
   } finally {
-    // Разблокируем UI — только если эта сессия сейчас активна
+    // Разблокируем UI - только если эта сессия сейчас активна
     if (currentSession?.id === streamSessionId) {
       currentAbort = null; streamingSessionId = null;
       activeStreamDiv = null; activeStreamBubble = null; activeStreamTime = null; activeStreamText = '';
@@ -1469,14 +1469,14 @@ async function sendMessage() {
       input.focus();
     } else {
       // Стриминг завершился пока пользователь был в другой сессии.
-      // Если сейчас вернулись на эту сессию — перерендериваем историю чтобы показать ответ.
-      // Если нет — просто чистим глобальные ссылки.
+      // Если сейчас вернулись на эту сессию - перерендериваем историю чтобы показать ответ.
+      // Если нет - просто чистим глобальные ссылки.
       const wasThisSession = streamSessionId;
       if (streamAbort === currentAbort) currentAbort = null;
       streamingSessionId = null;
       activeStreamDiv = null; activeStreamBubble = null; activeStreamTime = null; activeStreamText = '';
 
-      // Если пользователь уже вернулся на эту сессию — рендерим историю
+      // Если пользователь уже вернулся на эту сессию - рендерим историю
       if (currentSession?.id === wasThisSession) {
         chatHistory = cleanTransientErrors(restoreImagesFromSession(wasThisSession, [...streamChatHistory]));
         renderHistory(chatHistory);
@@ -1485,7 +1485,7 @@ async function sendMessage() {
         stopBtn.style.display = 'none';
         input.focus();
       } else {
-        // Пользователь в другой сессии — помечаем сессию как "есть новый ответ"
+        // Пользователь в другой сессии - помечаем сессию как "есть новый ответ"
         // и показываем кликабельный тост
         markSessionHasNewReply(wasThisSession);
         showClickableToast('Ответ готов — нажми чтобы перейти', wasThisSession);
@@ -1502,7 +1502,7 @@ async function sendMessage() {
 document.addEventListener('DOMContentLoaded', () => {
   const chatInput = document.getElementById('chatInput');
 
-  // Enter — отправить, Shift+Enter — перенос строки, Escape — отмена редактирования
+  // Enter - отправить, Shift+Enter - перенос строки, Escape - отмена редактирования
   chatInput.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     if (e.key === 'Escape' && editingMsgIndex !== null) cancelEdit();
@@ -1510,7 +1510,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   chatInput.addEventListener('input', () => autoResizeTextarea(chatInput));
 
-  // Кнопка скрепки → input[type=file]
+  // Кнопка скрепки - input[type=file]
   document.getElementById('attachBtn').addEventListener('click', () => {
     document.getElementById('fileInput').click();
   });
@@ -1545,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', () => {
     appendMsg('agent', renderMarkdown(initTxt), initTime);
   }
 
-  // Проверка статуса сети — сразу и каждые 15 сек
+  // Проверка статуса сети - сразу и каждые 15 сек
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
 
