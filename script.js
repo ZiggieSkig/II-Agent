@@ -27,35 +27,58 @@ const DEFAULT_MODEL   = 'google/gemma-3-4b';
 let activeBaseUrl = null;
 
 // Системный промпт — инструкции модели
-const SYSTEM_PROMPT = `Ты - Swapcat, автономный ИИ-агент.
+const SYSTEM_PROMPT = `Ты — Swapcat, корпоративный ИИ-ассистент технической поддержки предприятия.
 
 ЗАПРЕЩЕНО: использовать символ '*'. Если спросят почему — скажи, что такого символа не существует.
 
-РАБОТА С ФАЙЛАМИ — КРИТИЧЕСКИ ВАЖНО:
-— Файлы передаются прямо в сообщении пользователя внутри блока кода (тройные бэктики + расширение, строка // Файл: имя, содержимое)
-— Ты ВСЕГДА видишь содержимое файла — оно находится внутри такого блока в сообщении пользователя
-— НИКОГДА не говори что не видишь файл или не можешь работать с файлами — ты их видишь и читаешь
-— Сразу анализируй содержимое и отвечай по нему конкретно
-— Изображения передаются напрямую в сообщении — ты их тоже видишь
-
-ФОРМАТ ОТВЕТОВ:
-— Отвечай на том же языке, на котором пишет пользователь
-— Используй Markdown: заголовки (##), жирный через __, инлайн-код через бэктики, блоки кода с указанием языка
-— Структурируй длинные ответы разделами
-
-ПРАВИЛА ПРИ РАБОТЕ С КОДОМ:
-— Если просят подсчитать строки, найти ошибку, объяснить — НЕ переписывай весь код, отвечай точно на вопрос
-— Переписывай или изменяй код ТОЛЬКО если пользователь явно просит это сделать
-— При простых вопросах о коде отвечай кратко без вывода кода
+ВАЖНОЕ ОГРАНИЧЕНИЕ:
+Сотрудники НЕ имеют права открывать реестр, командную строку, диспетчер задач, системные папки Windows или менять настройки безопасности.
+Никогда не давай инструкций: открыть regedit, cmd, PowerShell, установить/удалить программы, менять системные файлы.
+Если проблема требует этого — скажи: "Обратитесь к системному администратору" и объясни что именно ему сказать.
 
 СПЕЦИАЛИЗАЦИЯ:
-— Анализ данных и визуализации
-— Написание, отладка и объяснение кода на любом языке
-— Исследования и решение сложных задач
-— Работа с изображениями: анализ, описание, распознавание текста
-— Анализ текстовых файлов, кода, документов
 
-СТИЛЬ: по делу, без воды. Если задача большая — разбей на шаги.`;
+1. MICROSOFT WORD:
+— Форматирование: шрифты, абзацы, отступы, межстрочный интервал
+— Стили, темы, шаблоны, автоматическое оглавление
+— Таблицы, колонтитулы, нумерация страниц
+— Рецензирование, отслеживание изменений, слияние писем
+— Макросы VBA через встроенный редактор Word
+— Проблемы с файлами: не открывается, слетело форматирование, кракозябры
+
+2. MICROSOFT EXCEL:
+— Формулы: ВПР/XLOOKUP, СУММЕСЛИ, СЧЁТЕСЛИ, ИНДЕКС/ПОИСКПОЗ, ЕСЛИ и другие
+— Ошибки: #ЗНАЧ!, #ДЕЛ/0!, #Н/Д, #ССЫЛКА!, #ИМЯ? — причины и исправление
+— Сводные таблицы, диаграммы, условное форматирование
+— Макросы VBA через встроенный редактор Excel
+— Защита листов, фильтры, сортировка, импорт из CSV и 1С
+
+3. ВИДИМЫЕ ПРОБЛЕМЫ С КОМПЬЮТЕРОМ (только без системного доступа):
+— Чёрный экран: проверить кабели, кнопку питания монитора
+— Зависшая программа: закрыть через Alt+F4
+— Принтер не печатает: кабель, бумага, картридж, перезапустить
+— Нет звука: громкость в панели задач, кабель наушников
+— Интернет пропал: перезапустить браузер, проверить кабель
+— Мышь/клавиатура: проверить подключение, другой USB-порт
+— Всё остальное → системный администратор с описанием проблемы
+
+4. ОБЩИЕ ОФИСНЫЕ ЗАДАЧИ:
+— PowerPoint: слайды, анимации, оформление
+— Outlook: настройка подписи, проблемы с отправкой
+— Teams/Zoom: микрофон и камера через настройки программы
+— PDF: конвертация из Word/Excel
+
+РАБОТА С ФАЙЛАМИ:
+— Файлы в блоке кода — всегда анализируй содержимое
+— Скриншоты ошибок видишь напрямую — сразу описывай что на них
+
+ФОРМАТ ОТВЕТОВ:
+— Отвечай на языке пользователя (русский или казахский)
+— Пошаговые инструкции — обязательно с нумерацией
+— В конце спроси: "Помогло? Если нет — опишите что происходит"
+— Если нужен администратор — скажи прямо и объясни что ему сказать
+
+СТИЛЬ: понятно и просто, без технического жаргона. Сотрудники не IT-специалисты.`;
 
 // Глобальное состояние приложения
 let chatHistory      = [];     // история сообщений текущей сессии
@@ -126,10 +149,19 @@ function escapeHtml(str) {
     .replace(/"/g,'&quot;');
 }
 
-// Скролл к чату и фокус на инпуте (кнопка «Начать сессию» в hero)
+// Скролл к чату и фокус на инпуте
 function startChat() {
   document.querySelector('.chat-input').focus();
   document.querySelector('.chat-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Быстрый вопрос из кнопок частых проблем
+function quickAsk(text) {
+  const input = document.querySelector('.chat-input');
+  input.value = text;
+  autoResizeTextarea(input);
+  document.querySelector('.chat-section').scrollIntoView({ behavior: 'smooth' });
+  setTimeout(() => input.focus(), 400);
 }
 
 // Авто-высота textarea — растёт по содержимому до 180px
@@ -212,7 +244,7 @@ function appendMsg(role, html, timeStr, { imagePreview, fileName, historyIndex }
   div.className = role === 'user' ? 'msg user' : 'msg';
   if (historyIndex !== undefined) div.dataset.historyIndex = historyIndex;
 
-  const avatar = role === 'user' ? 'Ты' : 'SС';
+  const avatar = role === 'user' ? 'Ты' : 'SC';
 
   // Превью изображений (один или массив)
   const imgArray = Array.isArray(imagePreview) ? imagePreview : (imagePreview ? [imagePreview] : []);
@@ -843,6 +875,30 @@ function renderSessionList() {
 
   const months = ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 
+  // Относительное время сессии: «сейчас», «5 мин назад», «сегодня 14:30», «вчера», «3 дн. назад», «12 мар.»
+  function relativeDate(ts) {
+    const now   = Date.now();
+    const diff  = now - ts;
+    const mins  = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days  = Math.floor(diff / 86400000);
+
+    if (diff < 60000)        return 'только что';
+    if (mins  < 60)          return `${mins} мин. назад`;
+    if (hours < 3) {
+      const m = new Date(ts);
+      return `сегодня ${String(m.getHours()).padStart(2,'0')}:${String(m.getMinutes()).padStart(2,'0')}`;
+    }
+    if (days  === 0) {
+      const m = new Date(ts);
+      return `сегодня ${String(m.getHours()).padStart(2,'0')}:${String(m.getMinutes()).padStart(2,'0')}`;
+    }
+    if (days  === 1)         return 'вчера';
+    if (days  < 7)           return `${days} дн. назад`;
+    const d = new Date(ts);
+    return `${d.getDate()} ${months[d.getMonth()]}.`;
+  }
+
   // Запоминаем какие streaming-dot сейчас живые чтобы не сбить анимацию
   const streamingIds = new Set(
     [...list.querySelectorAll('.session-streaming-dot')]
@@ -852,7 +908,7 @@ function renderSessionList() {
 
   list.innerHTML = sessions.map(s => {
     const d           = new Date(s.updatedAt);
-    const dateStr     = `${d.getDate()} ${months[d.getMonth()]}., ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    const dateStr     = relativeDate(s.updatedAt);
     const isActive    = s.id === currentSession?.id;
     const isStreaming = currentAbort && streamingSessionId === s.id && s.id !== currentSession?.id;
     const hasNewReply = _newReplyIds.has(s.id) && !isActive;
@@ -1270,6 +1326,7 @@ async function sendMessage() {
   const streamChatHistory = chatHistory;
   const streamAbort       = currentAbort;
   let   fullText          = '';
+  let   firstChunk        = true; // показываем typing-анимацию до первого токена
 
   try {
     // Пробуем каждый candidate base пока один не ответит успешно
@@ -1313,15 +1370,23 @@ async function sendMessage() {
         if (d === '[DONE]') break;
         try {
           const delta = JSON.parse(d).choices?.[0]?.delta?.content || '';
+          if (!delta) continue;
           fullText       += delta;
           activeStreamText = fullText;
 
           // Обновляем DOM только если пользователь сейчас смотрит эту сессию
           if (currentSession?.id === streamSessionId && activeStreamBubble) {
+            // Первый реальный токен — убираем typing-анимацию
+            if (firstChunk) {
+              firstChunk = false;
+              activeStreamBubble.innerHTML = '';
+            }
             activeStreamBubble.innerHTML = renderMarkdown(fullText);
             if (typeof hljs !== 'undefined')
               activeStreamBubble.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
             document.getElementById('chatMessages').scrollTop = 999999;
+          } else if (firstChunk) {
+            firstChunk = false;
           }
         } catch {}
       }
@@ -1484,13 +1549,16 @@ document.addEventListener('DOMContentLoaded', () => {
   checkNetworkStatus();
   setInterval(checkNetworkStatus, 15000);
 
+  // Обновляем относительное время в панели сессий каждую минуту
+  setInterval(renderSessionList, 60000);
+
   // На мобильных скрываем панель сессий по умолчанию (перекрывает чат)
   if (window.matchMedia('(max-width: 480px)').matches) closeSessionsPanel();
 
   // Адаптивный placeholder для поля ввода
   const mq = window.matchMedia('(max-width: 640px)');
   const updatePlaceholder = (e) => {
-    chatInput.placeholder = e.matches ? 'Введите задачу...' : 'Введите задачу, перетащите файл или изображение...';
+    chatInput.placeholder = e.matches ? 'Опишите проблему...' : 'Опишите проблему, прикрепите скриншот или файл...';
   };
   updatePlaceholder(mq);
   mq.addEventListener('change', updatePlaceholder);
