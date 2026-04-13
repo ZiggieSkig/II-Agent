@@ -1339,7 +1339,11 @@ async function sendMessage() {
           signal:  streamAbort.signal,
           body: JSON.stringify({
             model:       DEFAULT_MODEL,
-            messages:    [{ role: 'system', content: SYSTEM_PROMPT }, ...sanitizeHistoryForApi(chatHistory)],
+            messages: [
+            { role: 'user', content: `[СИСТЕМНЫЕ ИНСТРУКЦИИ — СТРОГО СЛЕДУЙ ИМ]\n\n${SYSTEM_PROMPT}\n\n[КОНЕЦ ИНСТРУКЦИЙ]` },
+            { role: 'assistant', content: 'Понял. Буду строго следовать инструкциям.' },
+            ...sanitizeHistoryForApi(chatHistory)
+            ],
             temperature: 0.7,
             max_tokens:  8192,
             stream:      true
